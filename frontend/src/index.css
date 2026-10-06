@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #0a1628;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin scrollbars to match the command-center theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Subtle pulse for agents that are currently running */
+@keyframes relay-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.relay-pulse {
+  animation: relay-pulse 1.6s ease-in-out infinite;
+}
+
+/* Fade-in for freshly arriving feed rows */
+@keyframes relay-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.relay-fade-in {
+  animation: relay-fade-in 0.25s ease-out;
+}
+
+/* One-shot ping for the agent communication graph.
+   Triggered exactly once per real backend event (React re-mounts the
+   circle via key), settles after ~1.2s — never loops. */
+@keyframes graph-ping {
+  from {
+    opacity: 0.9;
+    r: 18;
+  }
+  to {
+    opacity: 0;
+    r: 38;
+  }
+}
+.graph-ping {
+  animation: graph-ping 1.2s ease-out forwards;
+}
+
+/* One-shot highlight for pipeline story stages.
+   The node re-mounts (via key) only when real backend data changes its
+   status — the flash plays once and settles, never loops. */
+@keyframes stage-flash {
+  0% {
+    transform: scale(1.28);
+    filter: brightness(1.6);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+.stage-flash {
+  animation: stage-flash 0.9s ease-out;
+}
+
+/* Subtle skeleton shimmer for loading panels. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.skeleton {
+  background-color: #12233d;
+  background-image: linear-gradient(
+    90deg,
+    #12233d 0%,
+    #1a2f4d 40%,
+    #12233d 80%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relay-pulse,
+  .graph-ping,
+  .stage-flash,
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Inputs inside the modal */
+.relay-input {
+  width: 100%;
+  background-color: #0a1628;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #f1f5f9;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.relay-input:focus {
+  border-color: #3b82f6;
+}
+.relay-input::placeholder {
+  color: #475569;
+}
+select.relay-input option {
+  background-color: #0f1d33;
+}
