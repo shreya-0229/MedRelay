@@ -92,8 +92,13 @@ export default function OverviewTable({
                   }`}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="font-mono text-xs text-slate-200">
+                    <div className="flex items-center gap-1.5 font-mono text-xs text-slate-800">
                       {s.incident_id}
+                      {s.is_sample && (
+                        <span className="rounded border border-violet-500/60 bg-violet-500/10 px-1 py-px text-[9px] font-bold tracking-wide text-violet-700">
+                          SAMPLE
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-slate-500">
                       {typeLabel(s.incident_type)}
@@ -104,7 +109,7 @@ export default function OverviewTable({
                       {severityName(s.severity)}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-300">
+                  <td className="px-3 py-2.5 text-xs text-slate-700">
                     {shortAddr(d?.location.address ?? "")}
                   </td>
                   <td className="px-3 py-2.5">
@@ -117,30 +122,30 @@ export default function OverviewTable({
                       )}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-slate-200">
+                  <td className="px-3 py-2.5 font-mono text-xs text-slate-800">
                     {s.ambulance_id ?? (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-slate-700">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-slate-300">
+                  <td className="px-3 py-2.5 text-xs text-slate-700">
                     {s.hospital_name ? (
                       shortAddr(s.hospital_name)
                     ) : (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-slate-700">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-slate-200">
+                  <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-slate-800">
                     {d?.selected_ambulance ? (
                       `${d.selected_ambulance.eta_min.toFixed(1)} min`
                     ) : (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-slate-700">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-slate-200">
+                  <td className="px-3 py-2.5 font-mono text-xs tabular-nums text-slate-800">
                     {d ? (
                       pct(d.confidence)
                     ) : (
-                      <span className="text-slate-600">—</span>
+                      <span className="text-slate-700">—</span>
                     )}
                   </td>
                 </tr>

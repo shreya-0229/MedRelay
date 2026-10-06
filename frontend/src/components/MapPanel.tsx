@@ -85,24 +85,24 @@ function CoordinateGrid({ incidents, fleet, selectedId }: Props) {
     const x = PAD + ((W - 2 * PAD) * g) / 6;
     const y = PAD + ((H - 2 * PAD) * g) / 6;
     gridLines.push(
-      <line key={`v${g}`} x1={x} y1={PAD} x2={x} y2={H - PAD} stroke="#16283f" />,
-      <line key={`h${g}`} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#16283f" />,
+      <line key={`v${g}`} x1={x} y1={PAD} x2={x} y2={H - PAD} stroke="#e2e8f0" />,
+      <line key={`h${g}`} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#e2e8f0" />,
     );
   }
 
   return (
     <div className="absolute inset-0">
       <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full">
-        <rect x={0} y={0} width={W} height={H} fill="#0a1628" />
+        <rect x={0} y={0} width={W} height={H} fill="#f8fafc" />
         {gridLines}
-        <text x={PAD} y={H - 12} fontSize="9" fill="#475569" fontFamily="monospace">
+        <text x={PAD} y={H - 12} fontSize="9" fill="#94a3b8" fontFamily="monospace">
           {minLon.toFixed(2)}°E
         </text>
         <text
           x={W - PAD}
           y={H - 12}
           fontSize="9"
-          fill="#475569"
+          fill="#94a3b8"
           fontFamily="monospace"
           textAnchor="end"
         >
@@ -112,7 +112,7 @@ function CoordinateGrid({ incidents, fleet, selectedId }: Props) {
           <polyline
             points={route.map(([la, lo]) => `${X(lo)},${Y(la)}`).join(" ")}
             fill="none"
-            stroke="#7dd3fc"
+            stroke="#0284c7"
             strokeWidth={1.5}
             strokeDasharray="5 4"
           />
@@ -120,13 +120,13 @@ function CoordinateGrid({ incidents, fleet, selectedId }: Props) {
         {pts.map((p, i) => (
           <g key={i}>
             <circle cx={X(p.lon)} cy={Y(p.lat)} r={5} fill={p.color} opacity={0.85} />
-            <text x={X(p.lon) + 8} y={Y(p.lat) + 3} fontSize="9" fill="#94a3b8">
+            <text x={X(p.lon) + 8} y={Y(p.lat) + 3} fontSize="9" fill="#64748b">
               {p.label.length > 18 ? `${p.label.slice(0, 18)}…` : p.label}
             </text>
           </g>
         ))}
       </svg>
-      <div className="absolute left-2 top-2 rounded bg-relay-panel/90 px-2 py-1 text-[10px] text-slate-400">
+      <div className="absolute left-2 top-2 rounded bg-relay-panel/90 px-2 py-1 text-[10px] text-slate-600">
         Offline grid — tiles unavailable
       </div>
     </div>
@@ -155,7 +155,7 @@ export default function MapPanel(props: Props) {
         sub={
           tilesFailed
             ? "coordinate grid (tiles unavailable)"
-            : "Pune sector · Esri dark canvas"
+            : "Pune sector · Esri street map"
         }
       />
       <div className="relative flex-1">
@@ -175,7 +175,7 @@ export default function MapPanel(props: Props) {
           )}
         </Suspense>
         )}
-        <div className="absolute bottom-2 left-2 z-[500] flex gap-3 rounded bg-relay-panel/90 px-2.5 py-1.5 text-[10px] text-slate-300">
+        <div className="absolute bottom-2 left-2 z-[500] flex gap-3 rounded bg-relay-panel/90 px-2.5 py-1.5 text-[10px] text-slate-700">
           <span className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-red-400" /> incident
           </span>

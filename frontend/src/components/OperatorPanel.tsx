@@ -112,23 +112,23 @@ export default function OperatorPanel({ incident, onChanged }: Props) {
       <div className="border-b border-amber-500/30 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="relay-pulse inline-block h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700">
             Human operator required
           </h2>
-          <span className="ml-auto rounded border border-amber-500/40 px-1.5 py-0.5 font-mono text-[11px] text-amber-300">
+          <span className="ml-auto rounded border border-amber-500/40 px-1.5 py-0.5 font-mono text-[11px] text-amber-700">
             {incident.incident_id}
           </span>
         </div>
       </div>
       <div className="space-y-2.5 p-4">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">
             Why human review is required
           </div>
           <ul className="mt-1.5 space-y-1">
             {reasons.map((r, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-slate-200">
-                <span className="mt-0.5 text-amber-400">▸</span>
+              <li key={i} className="flex items-start gap-2 text-xs text-slate-800">
+                <span className="mt-0.5 text-amber-700">▸</span>
                 <span>{r}</span>
               </li>
             ))}
@@ -137,24 +137,24 @@ export default function OperatorPanel({ incident, onChanged }: Props) {
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded border border-relay-border bg-relay-panel2 p-2">
             <div className="text-slate-500">Confidence</div>
-            <div className="font-mono text-sm text-slate-100">
+            <div className="font-mono text-sm text-slate-900">
               {pct(incident.review?.confidence ?? incident.confidence)}
             </div>
           </div>
           <div className="rounded border border-relay-border bg-relay-panel2 p-2">
             <div className="text-slate-500">Affected decision</div>
-            <div className="truncate font-mono text-[11px] text-slate-100">
+            <div className="truncate font-mono text-[11px] text-slate-900">
               {incident.review?.affected_decision || "—"}
             </div>
           </div>
         </div>
         {incident.review?.status === "info_requested" && (
-          <p className="text-xs text-amber-300">
+          <p className="text-xs text-amber-700">
             Awaiting caller callback — more information requested.
           </p>
         )}
         {error && (
-          <p className="rounded border border-red-500/50 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
+          <p className="rounded border border-red-500/50 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-700">
             {error}
           </p>
         )}
@@ -165,7 +165,7 @@ export default function OperatorPanel({ incident, onChanged }: Props) {
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               placeholder="Operator note (recorded in the audit trail)…"
-              className="w-full rounded-md border border-relay-border bg-relay-bg px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-amber-500/60 focus:outline-none"
+              className="w-full rounded-md border border-relay-border bg-relay-bg px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-700 focus:border-amber-500/60 focus:outline-none"
             />
             <div className="grid grid-cols-2 gap-2">
               <ReviewButton
@@ -173,28 +173,28 @@ export default function OperatorPanel({ incident, onChanged }: Props) {
                 disabled={deciding !== null}
                 busy={deciding === "approve"}
                 onClick={() => handleDecision("approve")}
-                className="border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                className="border-emerald-500/50 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
               />
               <ReviewButton
                 label="REJECT"
                 disabled={deciding !== null}
                 busy={deciding === "reject"}
                 onClick={() => handleDecision("reject")}
-                className="border-red-500/50 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                className="border-red-500/50 bg-red-500/10 text-red-700 hover:bg-red-500/20"
               />
               <ReviewButton
                 label="REPLAN"
                 disabled={deciding !== null}
                 busy={deciding === "replan"}
                 onClick={() => handleDecision("replan")}
-                className="border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                className="border-amber-500/50 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
               />
               <ReviewButton
                 label="REQUEST INFORMATION"
                 disabled={deciding !== null}
                 busy={deciding === "request_info"}
                 onClick={() => handleDecision("request_info")}
-                className="border-sky-500/50 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20"
+                className="border-sky-500/50 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20"
               />
             </div>
           </>

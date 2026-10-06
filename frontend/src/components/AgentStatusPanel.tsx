@@ -43,31 +43,31 @@ function statusStyle(status: AgentStatus): {
     case "RUNNING":
       return {
         dot: "bg-sky-400 relay-pulse",
-        pill: "border-sky-500/50 bg-sky-500/10 text-sky-300",
+        pill: "border-sky-500/50 bg-sky-500/10 text-sky-700",
         label: "RUNNING",
       };
     case "COMPLETED":
       return {
         dot: "bg-emerald-400",
-        pill: "border-emerald-500/50 bg-emerald-500/10 text-emerald-300",
+        pill: "border-emerald-500/50 bg-emerald-500/10 text-emerald-700",
         label: "COMPLETED",
       };
     case "FAILED":
       return {
         dot: "bg-red-500",
-        pill: "border-red-500/60 bg-red-500/15 text-red-200 font-bold",
+        pill: "border-red-500/60 bg-red-500/15 text-red-800 font-bold",
         label: "FAILED",
       };
     case "WAITING":
       return {
         dot: "bg-slate-500",
-        pill: "border-slate-500/40 bg-slate-500/10 text-slate-400",
+        pill: "border-slate-500/40 bg-slate-500/10 text-slate-600",
         label: "WAITING",
       };
     case "HUMAN REVIEW":
       return {
         dot: "bg-amber-400 relay-pulse",
-        pill: "border-amber-500/60 bg-amber-500/15 text-amber-200 font-bold",
+        pill: "border-amber-500/60 bg-amber-500/15 text-amber-800 font-bold",
         label: "HUMAN REVIEW",
       };
     default:
@@ -173,9 +173,9 @@ export default function AgentStatusPanel({ incident, feed }: Props) {
                 aria-hidden
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold text-slate-200">
+                <div className="truncate text-xs font-semibold text-slate-800">
                   {a.label}
-                  <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-600">
+                  <span className="ml-1.5 font-mono text-[10px] font-normal text-slate-700">
                     {agentShortName(a.key)}
                   </span>
                 </div>
@@ -195,7 +195,7 @@ export default function AgentStatusPanel({ incident, feed }: Props) {
         })}
       </ul>
       )}
-      <p className="border-t border-relay-border px-4 py-2 text-[10px] text-slate-600">
+      <p className="border-t border-relay-border px-4 py-2 text-[10px] text-slate-700">
         Statuses derive from agent outputs and live WebSocket events.
       </p>
     </section>

@@ -18,9 +18,10 @@ Everything below is **not started**. Phase 1 is the DecentraHack 2.0 final pitch
 
 - [ ] **Multi-city support** — seeded fleet is Pune-only; per-city fleet tables +
       geofencing which city's agents handle an incident.
-- [x] **Automated tests** — DONE 2026-10-06: 226 checks across 4 suites
+- [x] **Automated tests** — DONE 2026-10-06: 246 checks across 4 suites
       (`backend/test_agents.py`, `test_orchestrator.py`, `test_recovery.py`,
-      `test_demo.py`) — agent logic, gate, replan loop, recovery, demo scenarios.
+      `test_demo.py`) — agent logic, gate, replan loop, recovery, demo scenarios,
+      sample-dataset seeding.
 - [ ] **Ambulance movement simulation** — units progress toward the scene over time
       instead of jumping `en_route`; en-route tracking on the map.
 - [ ] **Hospital capacity model** — per-specialty bed counts and ER load instead of

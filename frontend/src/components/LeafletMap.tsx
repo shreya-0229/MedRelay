@@ -10,8 +10,8 @@ interface Props {
   onTilesFailed: () => void;
 }
 
-const ESRI_DARK =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+const ESRI_LIGHT =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
 
 const AMB_COLOR: Record<string, string> = {
   available: "#34d399",
@@ -45,7 +45,7 @@ export default function LeafletMap({
       zoomControl: true,
       attributionControl: true,
     });
-    const tiles = L.tileLayer(ESRI_DARK, {
+    const tiles = L.tileLayer(ESRI_LIGHT, {
       attribution: "Tiles &copy; Esri",
       maxZoom: 16,
     });
@@ -142,7 +142,7 @@ export default function LeafletMap({
       if (hosp) pts.push([hosp.lat, hosp.lon]);
       if (pts.length >= 2) {
         L.polyline(pts, {
-          color: "#7dd3fc",
+          color: "#0284c7",
           weight: 2,
           dashArray: "6 6",
           opacity: 0.9,

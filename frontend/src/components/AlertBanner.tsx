@@ -10,26 +10,26 @@ const VARIANTS: Record<
   critical: {
     box: "border-red-500/60 bg-red-500/10",
     dot: "bg-red-500 relay-pulse",
-    title: "text-red-300",
-    body: "text-red-200/80",
+    title: "text-red-700",
+    body: "text-red-800/80",
   },
   warning: {
     box: "border-amber-500/60 bg-amber-500/10",
     dot: "bg-amber-400 relay-pulse",
-    title: "text-amber-300",
-    body: "text-amber-200/80",
+    title: "text-amber-700",
+    body: "text-amber-800/80",
   },
   success: {
     box: "border-emerald-500/50 bg-emerald-500/10",
     dot: "bg-emerald-400",
-    title: "text-emerald-300",
-    body: "text-emerald-200/80",
+    title: "text-emerald-700",
+    body: "text-emerald-800/80",
   },
   info: {
     box: "border-sky-500/50 bg-sky-500/10",
     dot: "bg-sky-400",
-    title: "text-sky-300",
-    body: "text-sky-200/80",
+    title: "text-sky-700",
+    body: "text-sky-800/80",
   },
 };
 

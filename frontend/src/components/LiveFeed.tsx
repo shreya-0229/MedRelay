@@ -14,7 +14,7 @@ export default function LiveFeed({ feed }: Props) {
   return (
     <section className="flex h-[420px] min-h-0 flex-col rounded-lg border border-relay-border bg-relay-panel xl:h-full">
       <header className="flex items-center justify-between border-b border-relay-border px-3 py-2.5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
           Agent activity
         </h2>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -39,17 +39,17 @@ export default function LiveFeed({ feed }: Props) {
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                      AGENT_DOT[ev.agent] ?? "bg-slate-400"
+                      AGENT_DOT[ev.agent] ?? "bg-slate-600"
                     }`}
                   />
-                  <span className="text-xs font-semibold text-slate-200">
+                  <span className="text-xs font-semibold text-slate-800">
                     {agentShortName(ev.agent)}
                   </span>
                   <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-500">
                     {formatClock(ev.ts)}
                   </span>
                 </div>
-                <div className="mt-0.5 pl-4 text-xs text-slate-300">
+                <div className="mt-0.5 pl-4 text-xs text-slate-700">
                   {ev.action}
                 </div>
                 {ev.rationale && (
@@ -59,7 +59,7 @@ export default function LiveFeed({ feed }: Props) {
                 )}
                 <div className="mt-0.5 pl-4 text-[11px] text-slate-500">
                   confidence{" "}
-                  <span className="font-medium text-slate-300">
+                  <span className="font-medium text-slate-700">
                     {pct(ev.confidence)}
                   </span>
                 </div>

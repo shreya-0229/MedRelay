@@ -1,6 +1,8 @@
 /* Typed fetch helpers for the MedRelay backend API (same origin). */
 import type {
+  Analytics,
   AuditLog,
+  CommsMessage,
   CreateIncidentPayload,
   DemoRunStatus,
   DemoScenario,
@@ -11,6 +13,7 @@ import type {
   IncidentSummary,
   ReviewDecision,
   ReviewDossier,
+  SampleSeedResult,
   Stats,
 } from "./types";
 
@@ -73,4 +76,11 @@ export const api = {
     request<{ status: string; incidents_deleted: number }>("/api/demo/reset", {
       method: "POST",
     }),
+  seedSample: () =>
+    request<SampleSeedResult>("/api/demo/seed-sample", { method: "POST" }),
+  getAnalytics: () => request<Analytics>("/api/demo/analytics"),
+  getCommunications: (id: string) =>
+    request<{ incident_id: string; messages: CommsMessage[] }>(
+      `/api/incidents/${encodeURIComponent(id)}/communications`,
+    ),
 };

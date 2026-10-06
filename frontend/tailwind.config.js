@@ -5,10 +5,10 @@ export default {
     extend: {
       colors: {
         relay: {
-          bg: "#0a1628",
-          panel: "#0f1d33",
-          panel2: "#12233d",
-          border: "#1e3a5f",
+          bg: "#f4f7fb",
+          panel: "#ffffff",
+          panel2: "#eef2f7",
+          border: "#dbe3ec",
         },
       },
       fontFamily: {

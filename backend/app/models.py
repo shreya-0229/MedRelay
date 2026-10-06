@@ -28,6 +28,9 @@ class Incident(Base):
     current_status: Mapped[str] = mapped_column(String(32), default="received")
     escalation_status: Mapped[str] = mapped_column(String(32), default="none")
     created_at: Mapped[datetime] = mapped_column(DateTime)
+    # Demo flag: seeded "sample day" rows for the judging dashboard.
+    # Additive column — existing rows default to False.
+    is_sample: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class AgentRun(Base):

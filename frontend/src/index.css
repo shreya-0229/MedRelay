@@ -4,24 +4,24 @@
 
 html,
 body {
-  background-color: #0a1628;
-  color: #f1f5f9;
+  background-color: #f4f7fb;
+  color: #1e293b;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Thin scrollbars to match the command-center theme */
+/* Thin scrollbars for the light theme */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e3a5f transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #1e3a5f;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 *::-webkit-scrollbar-track {
@@ -80,7 +80,7 @@ body {
 @keyframes stage-flash {
   0% {
     transform: scale(1.28);
-    filter: brightness(1.6);
+    filter: brightness(1.08);
   }
   100% {
     transform: scale(1);
@@ -101,12 +101,12 @@ body {
   }
 }
 .skeleton {
-  background-color: #12233d;
+  background-color: #e2e8f0;
   background-image: linear-gradient(
     90deg,
-    #12233d 0%,
-    #1a2f4d 40%,
-    #12233d 80%
+    #e2e8f0 0%,
+    #f1f5f9 40%,
+    #e2e8f0 80%
   );
   background-size: 800px 100%;
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
@@ -124,21 +124,26 @@ body {
 /* Inputs inside the modal */
 .relay-input {
   width: 100%;
-  background-color: #0a1628;
-  border: 1px solid #1e3a5f;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 14px;
-  color: #f1f5f9;
+  color: #1e293b;
   outline: none;
   transition: border-color 0.15s ease;
 }
 .relay-input:focus {
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 .relay-input::placeholder {
-  color: #475569;
+  color: #94a3b8;
 }
 select.relay-input option {
-  background-color: #0f1d33;
+  background-color: #ffffff;
+}
+
+/* Soft card shadow used across panels */
+.relay-card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }

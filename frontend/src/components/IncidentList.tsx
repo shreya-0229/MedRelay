@@ -22,7 +22,7 @@ export default function IncidentList({
   return (
     <section className="flex h-[420px] min-h-0 flex-col rounded-lg border border-relay-border bg-relay-panel xl:h-auto">
       <header className="border-b border-relay-border px-3 py-2.5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
           Incidents
         </h2>
         <p className="text-[11px] text-slate-500">
@@ -51,7 +51,7 @@ export default function IncidentList({
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium text-slate-100">
+                      <span className="truncate text-sm font-medium text-slate-900">
                         {typeLabel(inc.incident_type)}
                       </span>
                       <span className={severityBadgeClass(inc.severity)}>

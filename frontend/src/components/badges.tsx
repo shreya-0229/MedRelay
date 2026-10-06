@@ -3,12 +3,12 @@
 export function severityBadgeClass(severity: number | null): string {
   const base =
     "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border";
-  if (severity == null) return `${base} border-relay-border text-slate-400 bg-slate-400/5`;
+  if (severity == null) return `${base} border-relay-border text-slate-600 bg-slate-600/5`;
   if (severity >= 4)
-    return `${base} border-red-500/50 bg-red-500/15 text-red-400`;
+    return `${base} border-red-500/50 bg-red-500/15 text-red-600`;
   if (severity === 3)
-    return `${base} border-amber-500/50 bg-amber-500/15 text-amber-400`;
-  return `${base} border-relay-border text-slate-400 bg-slate-400/5`;
+    return `${base} border-amber-500/50 bg-amber-500/15 text-amber-700`;
+  return `${base} border-relay-border text-slate-600 bg-slate-600/5`;
 }
 
 export function severityLabel(severity: number | null): string {
@@ -38,10 +38,10 @@ export function statusBadgeClass(status: string): string {
     "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium border";
   const s = status.trim().toLowerCase();
   if (TERMINAL.has(s))
-    return `${base} border-emerald-500/50 bg-emerald-500/10 text-emerald-400`;
+    return `${base} border-emerald-500/50 bg-emerald-500/10 text-emerald-600`;
   if (s === "failed" || s === "error")
-    return `${base} border-red-500/50 bg-red-500/15 text-red-400`;
-  return `${base} border-sky-500/40 bg-sky-500/10 text-sky-300`;
+    return `${base} border-red-500/50 bg-red-500/15 text-red-600`;
+  return `${base} border-sky-500/40 bg-sky-500/10 text-sky-700`;
 }
 
 export function escalationBadge(escalationStatus: string): {
@@ -53,13 +53,13 @@ export function escalationBadge(escalationStatus: string): {
     return {
       text: "ESCALATED",
       className:
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border border-red-500/60 bg-red-500/15 text-red-400",
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border border-red-500/60 bg-red-500/15 text-red-600",
     };
   if (s === "replanning")
     return {
       text: "REPLANNING",
       className:
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border border-amber-500/60 bg-amber-500/15 text-amber-400",
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border border-amber-500/60 bg-amber-500/15 text-amber-700",
     };
   return null;
 }
@@ -97,7 +97,7 @@ export const AGENT_DOT: Record<string, string> = {
   DispatchAgent: "bg-violet-400",
   HospitalLiaisonAgent: "bg-cyan-400",
   VerificationAgent: "bg-emerald-400",
-  CommunicationAgent: "bg-slate-300",
+  CommunicationAgent: "bg-slate-700",
 };
 
 export function agentShortName(name: string): string {

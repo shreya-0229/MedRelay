@@ -12,12 +12,12 @@ function ambStatusClass(status: string): string {
   const base =
     "inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium";
   if (s === "available")
-    return `${base} border-emerald-500/50 bg-emerald-500/10 text-emerald-300`;
+    return `${base} border-emerald-500/50 bg-emerald-500/10 text-emerald-700`;
   if (s === "en_route")
-    return `${base} border-sky-500/50 bg-sky-500/10 text-sky-300`;
+    return `${base} border-sky-500/50 bg-sky-500/10 text-sky-700`;
   if (s === "out_of_service")
-    return `${base} border-red-500/50 bg-red-500/10 text-red-300`;
-  return `${base} border-amber-500/50 bg-amber-500/10 text-amber-300`;
+    return `${base} border-red-500/50 bg-red-500/10 text-red-700`;
+  return `${base} border-amber-500/50 bg-amber-500/10 text-amber-700`;
 }
 
 /**
@@ -61,20 +61,20 @@ export function AmbulancePanel({ fleet, incidents }: Props) {
                 key={a.id}
                 className="border-b border-relay-border/50 last:border-0"
               >
-                <td className="px-3 py-1.5 font-mono font-semibold text-slate-200">
+                <td className="px-3 py-1.5 font-mono font-semibold text-slate-800">
                   {a.id}
                 </td>
                 <td className="px-2 py-1.5">
                   <span className={ambStatusClass(a.status)}>{a.status}</span>
                 </td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">
+                <td className="px-2 py-1.5 font-mono text-slate-700">
                   {etaByAmb.has(a.id) ? (
                     `${etaByAmb.get(a.id)!.toFixed(1)} min`
                   ) : (
-                    <span className="text-slate-600">—</span>
+                    <span className="text-slate-700">—</span>
                   )}
                 </td>
-                <td className="px-2 py-1.5 text-slate-300">{a.capability}</td>
+                <td className="px-2 py-1.5 text-slate-700">{a.capability}</td>
                 <td className="px-2 py-1.5 font-mono text-[10px] tabular-nums text-slate-500">
                   {a.lat.toFixed(3)}, {a.lon.toFixed(3)}
                 </td>
@@ -123,15 +123,15 @@ export function HospitalPanel({ fleet }: { fleet: Fleet | null }) {
           const ratio = h.total_beds > 0 ? h.free_beds / h.total_beds : 0;
           const status =
             h.free_beds <= 0 ? (
-              <span className="inline-flex items-center rounded border border-red-500/50 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-300">
+              <span className="inline-flex items-center rounded border border-red-500/50 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-700">
                 FULL
               </span>
             ) : ratio < 0.15 ? (
-              <span className="inline-flex items-center rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-300">
+              <span className="inline-flex items-center rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
                 LOW
               </span>
             ) : (
-              <span className="inline-flex items-center rounded border border-emerald-500/50 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-300">
+              <span className="inline-flex items-center rounded border border-emerald-500/50 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
                 AVAILABLE
               </span>
             );
@@ -141,7 +141,7 @@ export function HospitalPanel({ fleet }: { fleet: Fleet | null }) {
               className="rounded-md border border-relay-border bg-relay-panel2 p-2.5"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-xs font-semibold text-slate-200">
+                <span className="truncate text-xs font-semibold text-slate-800">
                   {h.name}
                 </span>
                 {status}
@@ -149,14 +149,14 @@ export function HospitalPanel({ fleet }: { fleet: Fleet | null }) {
               <div className="mt-1.5 grid grid-cols-3 gap-2 text-[11px]">
                 <div>
                   <div className="text-slate-500">Emergency cap.</div>
-                  <div className="font-mono text-slate-200">
+                  <div className="font-mono text-slate-800">
                     {h.free_beds}/{h.total_beds}
                   </div>
                 </div>
                 <div>
                   <div className="text-slate-500">ICU</div>
                   <div
-                    className="text-slate-600"
+                    className="text-slate-700"
                     title="No ICU feed in the prototype"
                   >
                     n/a
@@ -167,15 +167,15 @@ export function HospitalPanel({ fleet }: { fleet: Fleet | null }) {
                   <div
                     className={
                       hasTrauma(h.specialties)
-                        ? "font-medium text-emerald-300"
-                        : "text-slate-600"
+                        ? "font-medium text-emerald-700"
+                        : "text-slate-700"
                     }
                   >
                     {hasTrauma(h.specialties) ? "yes" : "no"}
                   </div>
                 </div>
               </div>
-              <div className="mt-1 truncate text-[10px] text-slate-600">
+              <div className="mt-1 truncate text-[10px] text-slate-700">
                 {h.specialties.join(" · ")}
               </div>
             </div>

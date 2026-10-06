@@ -35,7 +35,7 @@ const STATUS_FILL: Record<string, string> = {
   FAILED: "#f87171",
   WAITING: "#64748b",
   "HUMAN REVIEW": "#fbbf24",
-  IDLE: "#334155",
+  IDLE: "#94a3b8",
 };
 
 interface Pulse {
@@ -110,7 +110,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
                   y1={ORCH.y + 22}
                   x2={p.x}
                   y2={p.y - 22}
-                  stroke={active ? "#38bdf8" : "#1e3a5f"}
+                  stroke={active ? "#0284c7" : "#cbd5e1"}
                   strokeWidth={active ? 2.5 : 1.5}
                 />
                 {label && (
@@ -119,7 +119,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
                     y={my - 4}
                     textAnchor="middle"
                     fontSize="9.5"
-                    fill={active ? "#7dd3fc" : "#64748b"}
+                    fill={active ? "#0284c7" : "#64748b"}
                   >
                     {label.length > 26 ? `${label.slice(0, 26)}…` : label}
                   </text>
@@ -146,8 +146,8 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
               cx={ORCH.x}
               cy={ORCH.y}
               r={20}
-              fill="#12233d"
-              stroke={pulse?.node === "ORCHESTRATOR" ? "#38bdf8" : "#1e3a5f"}
+              fill="#ffffff"
+              stroke={pulse?.node === "ORCHESTRATOR" ? "#0284c7" : "#cbd5e1"}
               strokeWidth={2}
             />
             <text
@@ -156,7 +156,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
               textAnchor="middle"
               fontSize="10"
               fontWeight="bold"
-              fill="#e2e8f0"
+              fill="#1e293b"
             >
               ORCH
             </text>
@@ -174,7 +174,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
           {/* agent nodes */}
           {AGENT_POS.map((p) => {
             const status = statusByKey[p.key] ?? "IDLE";
-            const fill = STATUS_FILL[status] ?? "#334155";
+            const fill = STATUS_FILL[status] ?? "#94a3b8";
             const active = pulse?.node === p.key;
             return (
               <g key={`node-${p.key}`}>
@@ -194,7 +194,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
                   cx={p.x}
                   cy={p.y}
                   r={18}
-                  fill="#0f1d33"
+                  fill="#ffffff"
                   stroke={fill}
                   strokeWidth={active ? 3 : 2}
                 />
@@ -205,7 +205,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
                   textAnchor="middle"
                   fontSize="10"
                   fontWeight={600}
-                  fill="#cbd5e1"
+                  fill="#334155"
                 >
                   {p.label}
                 </text>
@@ -214,7 +214,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
                   y={p.y + 46}
                   textAnchor="middle"
                   fontSize="9"
-                  fill="#7d8fa8"
+                  fill="#64748b"
                 >
                   {status}
                 </text>

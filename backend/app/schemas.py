@@ -164,6 +164,11 @@ class IncidentState(BaseModel):
     escalation_status: str = "none"     # none | replanning | escalated
     review: ReviewState = Field(default_factory=ReviewState)
     timeline: list[TimelineEntry] = Field(default_factory=list)
+    # Demo marker: True when this incident was seeded by
+    # POST /api/demo/seed-sample (judging "sample day" data). The DB column
+    # is authoritative for list payloads; this copy travels in state_json so
+    # the flag survives pipeline mutations.
+    is_sample: bool = False
 
 
 class IncidentSummary(BaseModel):
@@ -177,6 +182,7 @@ class IncidentSummary(BaseModel):
     created_at: datetime
     ambulance_id: str | None = None
     hospital_name: str | None = None
+    is_sample: bool = False
 
 
 class FleetStatusUpdate(BaseModel):
