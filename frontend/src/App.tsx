@@ -47,7 +47,7 @@ function Clock() {
     return () => window.clearInterval(t);
   }, []);
   return (
-    <span className="font-mono text-sm tabular-nums text-slate-700">
+    <span className="font-mono text-sm font-semibold tabular-nums text-white">
       {now.toLocaleTimeString("en-GB")}
     </span>
   );
@@ -191,43 +191,52 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-relay-bg font-sans text-slate-900">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-relay-border bg-relay-panel px-4 py-3">
+      <header className="relative overflow-hidden bg-gradient-to-r from-relay-navy via-[#10294f] to-[#16407c] text-white shadow-[0_4px_20px_-6px_rgba(11,31,58,0.5)]">
+        {/* Subtle top glow line for a premium edge */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/60 to-transparent"
+          aria-hidden
+        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <div className="mr-auto flex items-center gap-2.5">
-          <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+          <span className="relative inline-flex h-3.5 w-3.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-60" />
+            <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-red-300/40" />
+          </span>
           <div>
-            <h1 className="text-lg font-bold leading-tight tracking-tight">
+            <h1 className="text-lg font-extrabold leading-tight tracking-tight text-white">
               MedRelay
             </h1>
-            <p className="text-[11px] leading-tight text-slate-500">
+            <p className="text-[11px] font-medium leading-tight text-sky-200/80">
               Autonomous Emergency Response Network
             </p>
           </div>
         </div>
         <Clock />
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm">
           <span className={`inline-block h-2 w-2 rounded-full ${wsDot}`} />
           {wsText}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
+        <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-sky-100">
           Agents online: {agentsOnline}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
+        <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-sky-100">
           Active incidents: {stats?.active ?? "…"}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
+        <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-sky-100">
           LLM: {health?.llm_provider ?? "…"}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-500">
+        <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-sky-200/70">
           v{health?.version ?? "…"}
         </span>
-        <div className="flex overflow-hidden rounded-md border border-relay-border">
+        <div className="flex overflow-hidden rounded-lg border border-white/20 bg-white/5 p-0.5">
           <button
             type="button"
             onClick={() => setView("command")}
-            className={`px-3 py-2 text-xs font-bold transition-colors ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
               view === "command"
-                ? "bg-blue-600 text-white"
-                : "bg-relay-bg text-slate-600 hover:text-slate-800"
+                ? "bg-white text-relay-navy shadow-sm"
+                : "text-sky-100/80 hover:bg-white/10 hover:text-white"
             }`}
           >
             Command
@@ -235,10 +244,10 @@ export default function App() {
           <button
             type="button"
             onClick={() => setView("demo")}
-            className={`px-3 py-2 text-xs font-bold transition-colors ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
               view === "demo"
-                ? "bg-amber-600 text-white"
-                : "bg-relay-bg text-slate-600 hover:text-slate-800"
+                ? "bg-amber-400 text-amber-950 shadow-sm"
+                : "text-sky-100/80 hover:bg-white/10 hover:text-white"
             }`}
           >
             Demo Scenarios
@@ -247,10 +256,11 @@ export default function App() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+          className="relay-btn-primary rounded-lg px-4 py-2 text-sm font-bold text-white"
         >
           + New incident
         </button>
+        </div>
       </header>
 
       {view === "demo" ? (

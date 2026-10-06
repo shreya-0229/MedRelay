@@ -305,11 +305,12 @@ function StageNode({ stage }: { stage: StoryStage }) {
   /* keying the inner span on status+ts replays a one-shot highlight
      whenever real backend data moves the stage — never a loop. */
   const sig = `${stage.status}|${stage.ts ?? ""}|${stage.attention}`;
+  const glow = stage.status === "active" ? "relay-stage-glow" : "";
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center px-1">
       <span
         key={sig}
-        className={`stage-flash flex h-11 w-11 items-center justify-center rounded-full border-2 ${s.ring}`}
+        className={`stage-flash flex h-11 w-11 items-center justify-center rounded-full border-2 ${s.ring} ${glow}`}
       >
         <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} aria-hidden />
       </span>
@@ -328,10 +329,21 @@ function StageNode({ stage }: { stage: StoryStage }) {
   );
 }
 
-function Connector() {
+function Connector({ done }: { done: boolean }) {
   return (
-    <div className="flex shrink-0 items-center px-0.5 pb-10" aria-hidden>
-      <span className="text-sm text-slate-700">→</span>
+    <div className="flex h-11 shrink-0 items-center px-0.5" aria-hidden>
+      <span className={`relay-connector ${done ? "relay-connector-done" : ""}`} />
+      <svg width="10" height="12" viewBox="0 0 10 12" className="-ml-0.5 shrink-0" aria-hidden>
+        <path
+          d="M1 1 L8 6 L1 11"
+          fill="none"
+          stroke={done ? "#34d399" : "#3b82f6"}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.8"
+        />
+      </svg>
     </div>
   );
 }
@@ -348,7 +360,7 @@ function Strip({
   hint: string;
 }) {
   return (
-    <div className="rounded-lg border border-relay-border bg-relay-panel px-4 py-3">
+    <div className="rounded-2xl border border-relay-border bg-relay-panel relay-card px-4 py-3">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className={`text-xs font-bold uppercase tracking-widest ${titleClass}`}>
           {title}
@@ -360,7 +372,7 @@ function Strip({
           {stages.map((st, i) => (
             <div key={st.key} className="flex flex-1 items-start">
               <StageNode stage={st} />
-              {i < stages.length - 1 && <Connector />}
+              {i < stages.length - 1 && <Connector done={st.status === "done"} />}
             </div>
           ))}
         </div>

@@ -133,8 +133,8 @@ function ScenarioCard({
             running
               ? "cursor-wait bg-slate-700"
               : scenario.flagship
-                ? "bg-amber-600 hover:bg-amber-500"
-                : "bg-blue-600 hover:bg-blue-500"
+                ? "relay-btn-amber"
+                : "relay-btn-primary"
           }`}
         >
           {running ? "Running…" : complete ? "Run again" : "Run"}
@@ -377,7 +377,7 @@ export default function DemoView({
           type="button"
           onClick={doSeed}
           disabled={seeding}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+          className="relay-btn-primary rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
         >
           {seeding ? "Loading…" : "Load sample data"}
         </button>

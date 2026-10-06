@@ -3,6 +3,19 @@
 **MedRelay full-stack, Phase 1** · built for DecentraHack 2.0 (Agentic AI track) ·
 final pitch 9 Oct 2026 · backend version `0.1.0` (agent layer v2 since 2026-10-06).
 
+## 2026-10-06 — UI elevation pass (frontend only)
+
+Premium command-center restyle, zero backend changes: deep-navy gradient
+header band with live pulse indicator and glass pills; layered card shadows +
+`rounded-2xl` + hover lift across all panels; gradient pipeline connectors
+with glowing active stage (one-shot, reduced-motion safe); refined gradient
+buttons (`.relay-btn-primary` / `.relay-btn-amber`) with focus rings; stat
+cards with icon chips and accent bars; sticky table header + row hover +
+selected-row indicator; novelty cards with per-card accent gradients;
+severity palette aligned to the analytics donut
+(CRITICAL red · HIGH orange · MODERATE amber · LOW green).
+`npm run build` clean; backend suites 246/246 green.
+
 ## 2026-10-06 — Agent layer refactor (v2)
 
 The agent layer was restructured into canonical modules with a standard

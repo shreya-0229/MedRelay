@@ -205,7 +205,7 @@ export default function IncidentDetail({
 
   if (!incidentId) {
     return (
-      <section className="flex min-h-[280px] items-center justify-center rounded-lg border border-relay-border bg-relay-panel">
+      <section className="flex min-h-[280px] items-center justify-center rounded-2xl border border-relay-border bg-relay-panel relay-card">
         <EmptyState
           title="No incident selected"
           hint="Pick an incident from the overview to inspect its agent pipeline, verification, timeline, and audit trail."
@@ -216,7 +216,7 @@ export default function IncidentDetail({
 
   if (loading || !incident) {
     return (
-      <section className="rounded-lg border border-relay-border bg-relay-panel p-4">
+      <section className="rounded-2xl border border-relay-border bg-relay-panel relay-card p-4">
         {error ? (
           <AlertBanner variant="critical" title="Failed to load incident" detail={error} />
         ) : (
@@ -247,7 +247,7 @@ export default function IncidentDetail({
         incident.hospital_status === "reserved"));
 
   return (
-    <section className="min-h-0 rounded-lg border border-relay-border bg-relay-panel">
+    <section className="min-h-0 rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <div className="space-y-4 overflow-y-auto p-4 xl:max-h-[calc(100vh-240px)]">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
