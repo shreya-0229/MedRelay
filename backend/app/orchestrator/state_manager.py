@@ -12,9 +12,11 @@ corrupting the row.
 """
 from __future__ import annotations
 
+import random
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
@@ -72,7 +74,20 @@ class StateManager:
             created_at=now,
         )
         self._db.add(row)
-        self._db.commit()
+        try:
+            self._db.commit()
+        except IntegrityError:
+            # Rare race: two concurrent POSTs computed the same count()+1 id.
+            # Retry once with a random suffix; the readable INC-YYYYMMDD-NNNN
+            # format is kept for the normal path.
+            self._db.rollback()
+            suffix = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+                                            k=4))
+            incident_id = f"{prefix}{seq:04d}-{suffix}"
+            state.incident_id = incident_id
+            row.incident_id = incident_id
+            self._db.add(row)
+            self._db.commit()
         self._state = state
         self._row = row
         return state

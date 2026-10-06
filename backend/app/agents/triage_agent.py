@@ -90,11 +90,17 @@ class TriageAgent(BaseAgent):
         llm_used = False
 
         # A real LLM gets a say only on unknown types; the map wins otherwise.
+        # SAFETY RAIL: an LLM must never be able to bypass the human-review
+        # floor with an overconfident guess. Its confidence is capped below
+        # 0.6, so LLM-assessed unknown types ALWAYS route to human review —
+        # the deterministic 0.55 default and the LLM path behave identically
+        # w.r.t. the review guarantee.
         if not known:
             assessed = self._llm_assess(itype)
             if assessed:
-                severity, pathway, confidence = assessed
+                severity, pathway, llm_confidence = assessed
                 llm_used = True
+                confidence = min(llm_confidence, 0.59)
 
         # Deterministic vitals safety override — always applies.
         warnings: list[str] = []

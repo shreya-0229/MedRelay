@@ -47,11 +47,12 @@ Manual: see the README. Demo helpers: `POST /api/demo/reset`,
 
 ## How the replanning policy is tuned
 
-All knobs live at the top of `orchestrator.py`:
+All knobs live at the top of `backend/app/orchestrator/workflow.py`:
 
 - `MAX_REPLAN_ATTEMPTS = 2` — replan retries before escalation.
 - `LOW_CONFIDENCE = 0.6` — per-agent confidence safety rail (also the triage
-  `success` cutoff in `agents/triage.py`).
+  `success` cutoff). LLM-supplied triage confidence is additionally capped at
+  0.59 so a real model can never bypass this floor (2026-10-06 audit fix).
 - `RETRY_ORDER = ["TriageAgent", "DispatchAgent", "HospitalLiaisonAgent"]` —
   which failed agents get retried, in which order.
 - `STAGE_PAUSE_S = 0.35` — delay between stages so the dashboard animates live;
@@ -63,8 +64,9 @@ All knobs live at the top of `orchestrator.py`:
 
 - **PEP-668**: never `pip install` into the system Python — use `backend/.venv`.
 - **Pristine demo**: delete `backend/app/medrelay.db` before starting; tables and the
-  seed are recreated on startup. `POST /api/demo/reset` only restores the fleet —
-  incidents and audit history persist.
+  seed are recreated on startup. `POST /api/demo/reset` now does a FULL wipe —
+  cancels tracked scenario runs, deletes all incidents/agent-runs/audit/communications,
+  and reseeds the fleet (exactly like a fresh boot).
 - **`frontend/dist/` ships pre-built** in the transfer zip and `run.sh` skips the
   build when it's present — rebuild (`npm run build`) after any frontend change.
 - **WS client frames are ignored** by the server; the socket is purely a push channel.
@@ -75,5 +77,6 @@ All knobs live at the top of `orchestrator.py`:
   triage, with silent template fallback.
 - `GET /api/stats` counts `active` as any incident not `completed`/`escalated`/`failed`;
   `resolve` flips a completed incident to `completed` and frees its ambulance.
-- Incident IDs are `INC-YYYYMMDD-0001` per day, allocated by counting existing rows —
-  concurrent creates on the same day could race; fine for Phase-1 demo loads.
+- Incident IDs are `INC-YYYYMMDD-NNNN` per day, allocated by counting existing rows —
+  a concurrent-create race retries once with a random suffix instead of 500ing
+  (2026-10-06 audit fix).
