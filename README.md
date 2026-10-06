@@ -101,6 +101,18 @@ The dashboard header shows the active provider (`deterministic` / `gemini`).
   drafts message text and classifies unknown incident types (its confidence is capped so
   it can never bypass human review).
 
+## Deploy to Render (free)
+
+The repo ships a `Dockerfile` and a `render.yaml` Blueprint:
+
+1. In Render: **New → Blueprint** → connect the `MedRelay` repo → **Apply**.
+2. Render builds the image (frontend + backend) and serves it on its public URL.
+3. Health check: `/api/health`.
+
+Notes: the free tier sleeps after ~15 min idle (first load takes ~30–60 s to wake).
+SQLite lives inside the container, so demo data resets on redeploy — fine for judging,
+not for production. For the live pitch, run it locally with `run.bat` instead.
+
 ## Project layout
 
 ```

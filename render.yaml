@@ -1,0 +1,11 @@
+# MedRelay — Render Blueprint for one-click deploy.
+# In Render: New → Blueprint → connect the MedRelay repo → Apply.
+services:
+  - type: web
+    name: medrelay
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
