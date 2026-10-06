@@ -170,6 +170,18 @@ def main() -> None:
     check("vitals override to 5", out5.decision.get("severity") == 5,
           str(out5.decision.get("severity")))
 
+    # Safety rail: even an overconfident LLM must not bypass human review.
+    st_llm = blank_state("INC-TEST-0011")
+    st_llm.incident_type = "mystery_event_xyz"
+    agent_llm = TriageAgent(db=db, llm=llm)
+    agent_llm._llm_assess = lambda itype: (5, "trauma-center", 0.95)
+    out_llm = run(agent_llm.run(st_llm))
+    check("llm confidence capped below 0.6", out_llm.confidence < 0.6,
+          str(out_llm.confidence))
+    check("llm-capped requires_human", out_llm.requires_human is True)
+    check("llm-capped failed status", out_llm.status == "failed")
+    check("llm severity kept", out_llm.decision.get("severity") == 5)
+
     # ---------- dispatch ----------
     print("dispatch")
     db = fresh_db()

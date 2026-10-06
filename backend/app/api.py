@@ -189,6 +189,7 @@ def resolve_incident(incident_id: str,
             amb.assigned_incident = None
     state.ambulance_status = "available"
     state.current_status = "completed"
+    state.escalation_status = "none"
     from app.agents import utcnow
     from app.schemas import TimelineEntry
     state.timeline.append(TimelineEntry(
@@ -196,6 +197,7 @@ def resolve_incident(incident_id: str,
         detail="Incident resolved; ambulance released to fleet"))
     row.state_json = state.model_dump_json()
     row.current_status = "completed"
+    row.escalation_status = "none"
     db.commit()
     write_audit(db, incident_id, agent="API", action="Incident resolved",
                 rationale="Ambulance released to fleet", confidence=1.0)

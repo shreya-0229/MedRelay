@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { api } from "../api";
 import type { IncidentState } from "../types";
 import { INCIDENT_TYPE_LABELS } from "../types";
+import AlertBanner from "./AlertBanner";
 
 interface Props {
   open: boolean;
@@ -230,9 +231,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           </div>
 
           {error && (
-            <div className="rounded-md border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {error}
-            </div>
+            <AlertBanner variant="critical" title="Could not create incident" detail={error} />
           )}
 
           <div className="flex justify-end gap-2 pt-1">

@@ -228,6 +228,64 @@ def test_main_judging_twice():
     check("hospital-ready WS events emitted", len(hrs) >= 2, str(len(hrs)))
 
 
+def test_flagship_fail_fast_on_exhausted_fleet():
+    print("demo: flagship fails fast on exhausted ALS fleet (no fake HOSPITAL READY)")
+    db, Session = fresh_db()
+    cap = Capture()
+    for aid in ("A1", "A2", "A3", "A4"):
+        db.get(models.Ambulance, aid).status = "out_of_service"
+    db.commit()
+    r = exec_scenario("main_judging", Session, cap)
+    check("run failed (not done)", r.status == "failed", r.status)
+    check("not hospital_ready", r.terminal_state != "hospital_ready",
+          str(r.terminal_state))
+    check("error mentions Reset Demo", "Reset Demo" in r.error, r.error)
+    check("no incident created (fail fast)",
+          db.query(models.Incident).count() == 0,
+          str(db.query(models.Incident).count()))
+
+
+def test_flagship_gate_rejects_failed_recovery():
+    print("demo: step-20 gate refuses HOSPITAL READY on escalated incident")
+    db, Session = fresh_db()
+    cap = Capture()
+    # Only A1 ALS available: the real pipeline dispatches A1, then the
+    # breakdown leaves no replacement → real escalation.
+    for aid in ("A2", "A3", "A4"):
+        db.get(models.Ambulance, aid).status = "out_of_service"
+    db.commit()
+    run_obj = demo._Run(run_id="gatetest", scenario_id="main_judging",
+                        generation=demo._GENERATION[0])
+    ctx = demo._DemoCtx(session_factory=Session,
+                        llm=DeterministicProvider(), broadcast=cap)
+    state = run(demo._pipeline(run_obj, ctx, demo._road_accident_report()))
+    check("precondition: A1 dispatched",
+          state.selected_ambulance is not None
+          and state.selected_ambulance.id == "A1",
+          str(state.selected_ambulance))
+    from app.orchestrator import RecoveryManager
+    mgr = RecoveryManager(db=db, llm=DeterministicProvider(),
+                          broadcast=cap)
+    out = run(mgr.recover_ambulance_failure(
+        state.incident_id, state.selected_ambulance.id, "test breakdown"))
+    check("precondition: recovery escalated",
+          out.escalation_status == "escalated", out.escalation_status)
+    terminal = run(demo._stamp_hospital_ready(run_obj, ctx, out))
+    check("gate refused hospital_ready", terminal != "hospital_ready",
+          terminal)
+    check("run marked failed", run_obj.status == "failed", run_obj.status)
+    check("error is honest",
+          "did not reach HOSPITAL READY" in run_obj.error, run_obj.error)
+    check("terminal state honest", run_obj.terminal_state == "escalated",
+          str(run_obj.terminal_state))
+    dbx = Session()
+    row = dbx.query(models.Incident).filter(
+        models.Incident.incident_id == state.incident_id).one()
+    check("incident still escalated in DB",
+          row.escalation_status == "escalated", row.escalation_status)
+    dbx.close()
+
+
 def test_reset():
     print("demo: reset_demo wipes + reseeds pristine")
     db, Session = fresh_db()
@@ -282,6 +340,8 @@ if __name__ == "__main__":
     test_agent_conflict()
     test_external_service_failure()
     test_main_judging_twice()
+    test_flagship_fail_fast_on_exhausted_fleet()
+    test_flagship_gate_rejects_failed_recovery()
     test_reset()
     test_routes_registered()
     print(f"\n{PASS} passed, {FAIL} failed")

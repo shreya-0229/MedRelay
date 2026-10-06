@@ -74,8 +74,8 @@ The dashboard header shows the active provider (`deterministic` / `gemini`).
    dashboard animates).
 4. **0:55** — Select the incident: severity **S5**, pathway `cath-lab`, ambulance **A4 (ALS)**
    `en_route` with ETA, bed reserved at **Hadapsar Metro Hospital** — and the Verification panel
-   showing **5/5 checks PASSED**.
-5. **1:10** — Scroll to Family communications (English + Hindi SMS, ER pre-alert) and expand the
+   showing **8/8 checks PASSED**.
+5. **1:10** — Scroll to Family communications (English + Hindi + Marathi SMS, ER pre-alert) and expand the
    Audit trail — every agent action is logged with rationale and confidence.
 6. **1:25** — Failure drill (second incident): force the ALS fleet down —
    `POST /api/demo/fleet/ambulance/A1 … A4` with `{"status":"out_of_service"}` —
@@ -84,6 +84,22 @@ The dashboard header shows the active provider (`deterministic` / `gemini`).
    `POST /api/demo/reset`, and hit **Resolve incident** on the first case to release A4 back to the fleet.
 8. **2:00** — Close: *"Deterministic, verified, and audited — when the AI can't guarantee a safe
    plan, it escalates to a human instead of guessing."*
+
+## Limitations (honest, judge-safe)
+
+- **Simulated city**: fictional-but-plausible Pune data — 8 hospitals, 14 ambulances. Not real
+  fleet telemetry.
+- **Straight-line ETAs**: haversine distance at 40 km/h with a flat 1.25× traffic factor.
+  No road-network routing.
+- **No real SMS gateway**: family/bystander/hospital messages are drafted and stored in the
+  database (and shown on the dashboard), not actually delivered.
+- **Bed counts are plain integers**: no real hospital booking integration.
+- **Single city, no auth**: this is a local demo — do not expose it to a network. Every
+  endpoint (including demo reset and failure injection) is open by design for judging.
+- **LLM is optional and never on the safety rails**: dispatch selection, bed reservation,
+  verification verdicts, and escalation decisions are always deterministic. The LLM only
+  drafts message text and classifies unknown incident types (its confidence is capped so
+  it can never bypass human review).
 
 ## Project layout
 
