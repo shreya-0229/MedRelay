@@ -90,7 +90,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
         className="absolute inset-0 bg-black/70"
         onClick={() => !submitting && onClose()}
       />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-relay-border bg-relay-panel p-5">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-relay-border bg-relay-panel relay-card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900">New incident</h2>
@@ -246,7 +246,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+              className="relay-btn-primary rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {submitting ? "Dispatching…" : "Dispatch agents"}
             </button>

@@ -34,7 +34,7 @@ export function AmbulancePanel({ fleet, incidents }: Props) {
   const rows = fleet?.ambulances ?? [];
 
   return (
-    <section className="rounded-lg border border-relay-border bg-relay-panel">
+    <section className="rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Ambulances"
         sub={`${rows.length} units · live fleet state`}
@@ -108,7 +108,7 @@ export function HospitalPanel({ fleet }: { fleet: Fleet | null }) {
   const rows = fleet?.hospitals ?? [];
 
   return (
-    <section className="rounded-lg border border-relay-border bg-relay-panel">
+    <section className="rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Hospitals"
         sub={`${rows.length} facilities · live bed counts`}

@@ -20,7 +20,7 @@ export default function IncidentList({
   onSelect,
 }: Props) {
   return (
-    <section className="flex h-[420px] min-h-0 flex-col rounded-lg border border-relay-border bg-relay-panel xl:h-auto">
+    <section className="flex h-[420px] min-h-0 flex-col rounded-2xl border border-relay-border bg-relay-panel relay-card xl:h-auto">
       <header className="border-b border-relay-border px-3 py-2.5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
           Incidents

@@ -13,6 +13,8 @@ interface Props {
 interface CardShell {
   icon: string;
   iconBg: string;
+  /** Top accent gradient per card so the section pops. */
+  accent: string;
   title: string;
   body: string;
   stat: React.ReactNode;
@@ -78,14 +80,16 @@ export default function NoveltyShowcase({
   const cards: CardShell[] = [
     {
       icon: "🛡️",
-      iconBg: "bg-emerald-500/15",
+      iconBg: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_4px_10px_-2px_rgba(16,185,129,0.5)]",
+      accent: "bg-gradient-to-r from-emerald-500 to-teal-400",
       title: "Verification with veto power",
       body: "An independent agent cross-checks the plan against the live database — 8 consistency checks, real reject power before anything moves.",
       stat: verStat,
     },
     {
       icon: "🔄",
-      iconBg: "bg-sky-500/15",
+      iconBg: "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_4px_10px_-2px_rgba(14,165,233,0.5)]",
+      accent: "bg-gradient-to-r from-sky-500 to-blue-400",
       title: "Autonomous failure recovery",
       body: "Ambulance breaks down mid-plan? Hospital goes dark? The system verifies the failure, replans, and dispatches a replacement on its own.",
       stat: incident ? (
@@ -98,7 +102,8 @@ export default function NoveltyShowcase({
     },
     {
       icon: "🧑‍⚕️",
-      iconBg: "bg-amber-500/15",
+      iconBg: "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-[0_4px_10px_-2px_rgba(245,158,11,0.5)]",
+      accent: "bg-gradient-to-r from-amber-500 to-orange-400",
       title: "Human-in-the-loop",
       body: "Low-confidence triage pauses the pipeline BEFORE any reservation. A human dispatcher approves, rejects, asks for info, or replans.",
       stat: (
@@ -110,7 +115,7 @@ export default function NoveltyShowcase({
         <button
           type="button"
           onClick={() => onSelectIncident(reviewIncident.incident_id)}
-          className="mt-2 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-500"
+          className="relay-btn-amber mt-2 rounded-lg px-3 py-1.5 text-xs font-bold text-white"
         >
           Open live review →
         </button>
@@ -118,7 +123,8 @@ export default function NoveltyShowcase({
     },
     {
       icon: "🔒",
-      iconBg: "bg-slate-500/15",
+      iconBg: "bg-gradient-to-br from-slate-600 to-slate-800 text-white shadow-[0_4px_10px_-2px_rgba(71,85,105,0.5)]",
+      accent: "bg-gradient-to-r from-slate-500 to-slate-700",
       title: "Deterministic safety rails",
       body: "Dispatch, verification, retries, and escalation are hard deterministic rules. An LLM may assist — it can never override safety.",
       stat: (
@@ -133,7 +139,8 @@ export default function NoveltyShowcase({
     },
     {
       icon: "💬",
-      iconBg: "bg-violet-500/15",
+      iconBg: "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-[0_4px_10px_-2px_rgba(139,92,246,0.5)]",
+      accent: "bg-gradient-to-r from-violet-500 to-purple-400",
       title: "Trilingual emergency comms",
       body: "Families get updates in English, Hindi, and Marathi — drafted from confirmed facts, persisted as the durable record.",
       stat: (
@@ -144,7 +151,8 @@ export default function NoveltyShowcase({
     },
     {
       icon: "📜",
-      iconBg: "bg-blue-500/15",
+      iconBg: "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_4px_10px_-2px_rgba(59,130,246,0.5)]",
+      accent: "bg-gradient-to-r from-blue-500 to-indigo-400",
       title: "Event-sourced audit trail",
       body: "21 event types, append-only, replayable. Every decision carries its reason and confidence — accountability by construction.",
       stat: (
@@ -155,7 +163,8 @@ export default function NoveltyShowcase({
     },
     {
       icon: "▶️",
-      iconBg: "bg-rose-500/15",
+      iconBg: "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-[0_4px_10px_-2px_rgba(244,63,94,0.5)]",
+      accent: "bg-gradient-to-r from-rose-500 to-red-400",
       title: "One-button judging mode",
       body: "9 demo scenarios drive the real pipeline — checklists tick only on genuine backend events. Reset restores a pristine fleet.",
       stat: (
@@ -168,7 +177,7 @@ export default function NoveltyShowcase({
         <button
           type="button"
           onClick={onGoDemo}
-          className="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
+          className="relay-btn-primary mt-2 rounded-lg px-3 py-1.5 text-xs font-bold text-white"
         >
           Open Demo Scenarios →
         </button>
@@ -186,11 +195,12 @@ export default function NoveltyShowcase({
         {cards.map((c) => (
           <div
             key={c.title}
-            className="relay-card flex flex-col rounded-lg border border-relay-border bg-relay-panel p-4"
+            className="relay-card relay-card-hover relative flex flex-col overflow-hidden rounded-2xl border border-relay-border bg-relay-panel p-4"
           >
+            <span className={`absolute inset-x-0 top-0 h-1 ${c.accent}`} aria-hidden />
             <div className="flex items-center gap-2.5">
               <span
-                className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${c.iconBg}`}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${c.iconBg}`}
                 aria-hidden
               >
                 {c.icon}

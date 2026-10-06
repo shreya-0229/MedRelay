@@ -149,7 +149,7 @@ export default function MapPanel(props: Props) {
   const [tilesFailed, setTilesFailed] = useState(false);
 
   return (
-    <section className="flex h-full min-h-[320px] flex-col rounded-lg border border-relay-border bg-relay-panel">
+    <section className="flex h-full min-h-[320px] flex-col rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Live map"
         sub={

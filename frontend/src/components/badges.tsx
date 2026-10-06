@@ -1,14 +1,21 @@
 /* Shared badge + formatting helpers for the command-center theme. */
 
+/**
+ * Refined severity palette, consistent with the analytics donut:
+ * CRITICAL(5) red · HIGH(4) orange · MODERATE(3) amber · LOW(2) green.
+ */
 export function severityBadgeClass(severity: number | null): string {
   const base =
-    "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border";
-  if (severity == null) return `${base} border-relay-border text-slate-600 bg-slate-600/5`;
-  if (severity >= 4)
-    return `${base} border-red-500/50 bg-red-500/15 text-red-600`;
+    "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold border tracking-wide";
+  if (severity == null)
+    return `${base} border-relay-border text-slate-600 bg-slate-600/5`;
+  if (severity >= 5)
+    return `${base} border-red-500/50 bg-red-500/15 text-red-600 shadow-[0_0_8px_rgba(239,68,68,0.25)]`;
+  if (severity === 4)
+    return `${base} border-orange-500/50 bg-orange-500/15 text-orange-600`;
   if (severity === 3)
     return `${base} border-amber-500/50 bg-amber-500/15 text-amber-700`;
-  return `${base} border-relay-border text-slate-600 bg-slate-600/5`;
+  return `${base} border-emerald-500/50 bg-emerald-500/10 text-emerald-700`;
 }
 
 export function severityLabel(severity: number | null): string {

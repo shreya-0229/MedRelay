@@ -88,7 +88,7 @@ function Tile({
   accent: string;
 }) {
   return (
-    <div className="rounded-lg border border-relay-border bg-relay-panel px-4 py-3">
+    <div className="rounded-2xl border border-relay-border bg-relay-panel relay-card px-4 py-3">
       <div className="text-[11px] font-medium uppercase tracking-wider text-slate-600">
         {label}
       </div>
@@ -133,7 +133,7 @@ export default function AnalyticsRow() {
         sub="computed live from the database"
       />
       <div className="mt-2 grid gap-3 lg:grid-cols-5">
-        <div className="rounded-lg border border-relay-border bg-relay-panel px-4 py-3 lg:col-span-2">
+        <div className="rounded-2xl border border-relay-border bg-relay-panel relay-card px-4 py-3 lg:col-span-2">
           <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-600">
             Severity mix
           </div>

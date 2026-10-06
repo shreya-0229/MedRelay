@@ -144,7 +144,7 @@ export default function AgentStatusPanel({ incident, feed }: Props) {
   );
 
   return (
-    <section className="flex h-full flex-col rounded-lg border border-relay-border bg-relay-panel">
+    <section className="flex h-full flex-col rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Agent activity"
         sub={incident ? incident.incident_id : "no incident selected"}

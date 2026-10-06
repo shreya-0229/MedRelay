@@ -85,7 +85,7 @@ export default function AgentGraph({ states, feed, incidentId }: Props) {
   }
 
   return (
-    <section className="flex h-full flex-col rounded-lg border border-relay-border bg-relay-panel">
+    <section className="flex h-full flex-col rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Agent communication"
         sub="highlights fire on real backend events only"

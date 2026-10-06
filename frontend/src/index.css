@@ -5,10 +5,32 @@
 html,
 body {
   background-color: #f4f7fb;
+  /* Whisper of blue at the top of the page for depth — still a light theme. */
+  background-image: radial-gradient(
+    1200px 420px at 50% -120px,
+    rgba(37, 99, 235, 0.07),
+    transparent 70%
+  );
+  background-attachment: fixed;
   color: #1e293b;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tighter, more premium headings (system stack only — offline safe). */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* Clear, consistent keyboard focus. */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* Thin scrollbars for the light theme */
@@ -116,8 +138,15 @@ body {
   .relay-pulse,
   .graph-ping,
   .stage-flash,
-  .skeleton {
+  .skeleton,
+  .relay-card-hover,
+  .relay-btn-primary,
+  .relay-btn-amber {
     animation: none;
+    transition: none;
+  }
+  .relay-card-hover:hover {
+    transform: none;
   }
 }
 
@@ -143,7 +172,94 @@ select.relay-input option {
   background-color: #ffffff;
 }
 
-/* Soft card shadow used across panels */
+/* Soft layered card shadow used across panels. */
 .relay-card {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 10px 28px -14px rgba(15, 23, 42, 0.14);
+}
+
+/* Hover lift for interactive cards — transform only, GPU cheap. */
+.relay-card-hover {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.relay-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.06),
+    0 18px 38px -14px rgba(15, 23, 42, 0.2);
+}
+
+/* Refined primary button: blue gradient, soft glow, press feedback. */
+.relay-btn-primary {
+  background-image: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow:
+    0 4px 10px -2px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    filter 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+.relay-btn-primary:hover {
+  filter: brightness(1.07);
+}
+.relay-btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px -2px rgba(37, 99, 235, 0.4);
+}
+.relay-btn-primary:disabled {
+  opacity: 0.55;
+  filter: none;
+  transform: none;
+}
+
+/* Warm amber variant for demo / review actions. */
+.relay-btn-amber {
+  background-image: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  box-shadow:
+    0 4px 10px -2px rgba(217, 119, 6, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition:
+    filter 0.15s ease,
+    transform 0.1s ease;
+}
+.relay-btn-amber:hover {
+  filter: brightness(1.06);
+}
+.relay-btn-amber:active {
+  transform: translateY(1px);
+}
+.relay-btn-amber:disabled {
+  opacity: 0.55;
+  filter: none;
+  transform: none;
+}
+
+/* Gradient connector line for the pipeline strip. */
+.relay-connector {
+  height: 2px;
+  flex: 1;
+  min-width: 12px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #cbd5e1, #93c5fd 60%, #3b82f6);
+  opacity: 0.85;
+}
+.relay-connector-done {
+  background: linear-gradient(90deg, #6ee7b7, #34d399);
+}
+
+/* Glowing ring for the currently-active pipeline stage (one-shot). */
+.relay-stage-glow {
+  box-shadow:
+    0 0 0 4px rgba(56, 189, 248, 0.16),
+    0 0 22px rgba(56, 189, 248, 0.35);
+}
+
+/* Accent bar that prefixes section titles. */
+.relay-accent-bar {
+  background: linear-gradient(180deg, #3b82f6, #14b8a6);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.35);
 }

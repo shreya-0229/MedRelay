@@ -40,7 +40,7 @@ export default function OverviewTable({
   const rows = summaries.slice(0, 25);
 
   return (
-    <section className="rounded-lg border border-relay-border bg-relay-panel">
+    <section className="rounded-2xl border border-relay-border bg-relay-panel relay-card">
       <SectionHeader
         title="Live incident overview"
         sub={
@@ -56,8 +56,8 @@ export default function OverviewTable({
       ) : (
       <div className="overflow-x-auto">
         <table className="w-full min-w-[880px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-relay-border text-[11px] uppercase tracking-wider text-slate-500">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-relay-panel2/95 text-[11px] uppercase tracking-wider text-slate-500 shadow-[0_1px_0_#dbe3ec] backdrop-blur-sm">
               <th className="px-4 py-2 font-medium">Incident ID</th>
               <th className="px-3 py-2 font-medium">Severity</th>
               <th className="px-3 py-2 font-medium">Location</th>
@@ -87,8 +87,8 @@ export default function OverviewTable({
                 <tr
                   key={s.incident_id}
                   onClick={() => onSelect(s.incident_id)}
-                  className={`cursor-pointer border-b border-relay-border/50 transition-colors last:border-0 hover:bg-relay-panel2 ${
-                    selected ? "bg-relay-panel2" : ""
+                  className={`cursor-pointer border-b border-relay-border/50 transition-colors last:border-0 hover:bg-blue-50/60 ${
+                    selected ? "bg-blue-50/80 shadow-[inset_3px_0_0_#2563eb]" : ""
                   }`}
                 >
                   <td className="px-4 py-2.5">
