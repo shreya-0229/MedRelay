@@ -273,29 +273,29 @@ function stageClasses(status: StageStatus, attention: boolean): {
     return {
       ring: "border-emerald-500/50 bg-emerald-500/10",
       dot: "bg-emerald-400",
-      label: "text-emerald-300",
+      label: "text-emerald-700",
     };
   if (status === "failed")
     return {
       ring: "border-red-500/60 bg-red-500/10",
       dot: "bg-red-500",
-      label: "text-red-300",
+      label: "text-red-700",
     };
   if (status === "active")
     return attention
       ? {
           ring: "border-amber-500/60 bg-amber-500/10",
           dot: "bg-amber-400 relay-pulse",
-          label: "text-amber-300",
+          label: "text-amber-700",
         }
       : {
           ring: "border-sky-500/60 bg-sky-500/10",
           dot: "bg-sky-400 relay-pulse",
-          label: "text-sky-300",
+          label: "text-sky-700",
         };
   return {
     ring: "border-relay-border bg-relay-panel2",
-    dot: "bg-slate-600",
+    dot: "bg-slate-700",
     label: "text-slate-500",
   };
 }
@@ -321,7 +321,7 @@ function StageNode({ stage }: { stage: StoryStage }) {
           {stage.sub}
         </span>
       )}
-      <span className="mt-0.5 font-mono text-[10px] tabular-nums text-slate-600">
+      <span className="mt-0.5 font-mono text-[10px] tabular-nums text-slate-700">
         {stage.ts ? formatClock(stage.ts) : "—"}
       </span>
     </div>
@@ -331,7 +331,7 @@ function StageNode({ stage }: { stage: StoryStage }) {
 function Connector() {
   return (
     <div className="flex shrink-0 items-center px-0.5 pb-10" aria-hidden>
-      <span className="text-sm text-slate-600">→</span>
+      <span className="text-sm text-slate-700">→</span>
     </div>
   );
 }
@@ -353,7 +353,7 @@ function Strip({
         <h2 className={`text-xs font-bold uppercase tracking-widest ${titleClass}`}>
           {title}
         </h2>
-        <p className="text-[11px] text-slate-600">{hint}</p>
+        <p className="text-[11px] text-slate-700">{hint}</p>
       </div>
       <div className="overflow-x-auto">
         <div className="flex min-w-[760px] items-start justify-between">
@@ -384,7 +384,7 @@ export default function PipelineStrip({ incident, feed }: Props) {
     <div className="space-y-3">
       <Strip
         title="Response pipeline"
-        titleClass="text-slate-300"
+        titleClass="text-slate-700"
         stages={stages}
         hint={
           incident
@@ -395,7 +395,7 @@ export default function PipelineStrip({ incident, feed }: Props) {
       {recovery && (
         <Strip
           title="Failure recovery"
-          titleClass="text-amber-300"
+          titleClass="text-amber-700"
           stages={recovery}
           hint="driven by recovery events"
         />

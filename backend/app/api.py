@@ -54,6 +54,7 @@ def incident_list_payload(db: Session) -> list[dict]:
             created_at=s.created_at,
             ambulance_id=s.selected_ambulance.id if s.selected_ambulance else None,
             hospital_name=s.selected_hospital.name if s.selected_hospital else None,
+            is_sample=bool(getattr(r, "is_sample", False) or s.is_sample),
         ).model_dump(mode="json"))
     return out
 
@@ -90,7 +91,32 @@ def list_incidents(db: Session = Depends(models.get_db)) -> dict:
 @router.get("/incidents/{incident_id}", response_model=IncidentState)
 def get_incident(incident_id: str, db: Session = Depends(models.get_db)) -> IncidentState:
     row = _incident_or_404(db, incident_id)
-    return IncidentState.model_validate_json(row.state_json)
+    state = IncidentState.model_validate_json(row.state_json)
+    state.is_sample = bool(getattr(row, "is_sample", False) or state.is_sample)
+    return state
+
+
+@router.get("/incidents/{incident_id}/communications")
+def get_incident_communications(incident_id: str,
+                                db: Session = Depends(models.get_db)) -> dict:
+    """Durable multilingual message log for one incident.
+
+    Reads the real ``communications`` table (language-tagged EN/HI/MR) —
+    the trilingual evidence behind the dashboard comms viewer.
+    """
+    _incident_or_404(db, incident_id)
+    rows = (db.query(models.CommunicationMessage)
+              .filter(models.CommunicationMessage.incident_id == incident_id)
+              .order_by(models.CommunicationMessage.id.asc())
+              .all())
+    return {
+        "incident_id": incident_id,
+        "messages": [
+            {"id": m.id, "channel": m.channel, "language": m.language,
+             "text": m.text, "ts": m.ts.isoformat()}
+            for m in rows
+        ],
+    }
 
 
 @router.get("/incidents/{incident_id}/audit")
@@ -272,6 +298,61 @@ async def demo_reset(request: Request,
     fleet to pristine state — exactly like a fresh boot."""
     return await demo_mode.reset_demo(db,
                                       broadcast=request.app.state.broadcast)
+
+
+@router.post("/demo/seed-sample", status_code=201)
+async def demo_seed_sample(request: Request,
+                           db: Session = Depends(models.get_db)) -> dict:
+    """Load the "sample day" dataset: 6 realistic pre-run incidents written
+    as real DB rows (agent outputs, audit events, EN/HI/MR communications),
+    all badged ``is_sample=True`` so the dashboard shows SAMPLE labels.
+    One of them pauses at ``human_review_required`` so judges can decide
+    live. Reset Demo wipes them along with everything else.
+
+    Idempotent-ish: seeding twice replaces the previous sample set.
+    """
+    result = demo_mode.seed_sample_data(db)
+    await request.app.state.broadcast({
+        "type": "incident_list",
+        "incidents": incident_list_payload(db)})
+    return result
+
+
+@router.get("/demo/analytics")
+def demo_analytics(db: Session = Depends(models.get_db)) -> dict:
+    """Dashboard analytics — every number computed live from the DB."""
+    rows = db.query(models.Incident).all()
+    severities: dict[str, int] = {}
+    ver_passed = ver_total = 0
+    confidences: list[float] = []
+    for r in rows:
+        try:
+            s = IncidentState.model_validate_json(r.state_json)
+        except Exception:
+            continue
+        label = {5: "CRITICAL", 4: "HIGH", 3: "MODERATE", 2: "LOW",
+                 1: "MINIMAL"}.get(s.severity or 0, "UNKNOWN")
+        severities[label] = severities.get(label, 0) + 1
+        if s.verification_results is not None:
+            ver_total += 1
+            if s.verification_results.passed:
+                ver_passed += 1
+        confidences.append(s.confidence)
+    return {
+        "severity_distribution": severities,
+        "verification": {
+            "passed": ver_passed,
+            "total": ver_total,
+            "pass_rate": round(ver_passed / ver_total, 2) if ver_total else None,
+        },
+        "comms_sent": db.query(models.CommunicationMessage).count(),
+        "audit_events": db.query(models.AuditEvent).count(),
+        "review_queue": sum(
+            1 for r in rows if r.current_status == "human_review_required"),
+        "avg_confidence": (round(sum(confidences) / len(confidences), 2)
+                           if confidences else None),
+        "incidents": len(rows),
+    }
 
 
 @router.post("/demo/fleet/ambulance/{amb_id}")

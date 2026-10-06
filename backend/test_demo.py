@@ -320,6 +320,87 @@ def test_reset():
     check("run registry cleared", demo.get_run(r.run_id) is None)
 
 
+def test_seed_sample():
+    print("demo: seed-sample dataset (6 incidents, badged, reset clears)")
+    db, Session = fresh_db()
+    result = demo.seed_sample_data(db)
+    check("seed returns 6 ids", result["status"] == "seeded"
+          and len(result["incidents"]) == 6, str(result))
+    ids = result["incidents"]
+
+    from app.schemas import IncidentState
+    rows = {r.incident_id: r for r in db.query(models.Incident).all()}
+    check("6 incident rows", len(rows) == 6, str(len(rows)))
+    check("all rows flagged is_sample",
+          all(getattr(r, "is_sample", False) for r in rows.values()))
+
+    states = {i: IncidentState.model_validate_json(rows[i].state_json)
+              for i in ids}
+    check("states carry is_sample",
+          all(s.is_sample for s in states.values()))
+    check("SAMPLE-01 hospital_ready after ambulance recovery",
+          states["SAMPLE-01"].current_status == "hospital_ready"
+          and states["SAMPLE-01"].selected_ambulance.id == "A3",
+          states["SAMPLE-01"].current_status)
+    check("SAMPLE-02 hospital_ready (heart)",
+          states["SAMPLE-02"].current_status == "hospital_ready")
+    check("SAMPLE-03 paused for human review, no reservations",
+          states["SAMPLE-03"].current_status == "human_review_required"
+          and states["SAMPLE-03"].review.status == "pending"
+          and states["SAMPLE-03"].selected_ambulance is None
+          and states["SAMPLE-03"].selected_hospital is None)
+    check("SAMPLE-04 escalated on conflict, verification vetoed",
+          states["SAMPLE-04"].current_status == "escalated"
+          and states["SAMPLE-04"].escalation_status == "escalated"
+          and states["SAMPLE-04"].verification_results is not None
+          and not states["SAMPLE-04"].verification_results.passed)
+    check("SAMPLE-05 hospital_ready (moderate fracture)",
+          states["SAMPLE-05"].current_status == "hospital_ready")
+    check("SAMPLE-06 hospital_ready after hospital recovery",
+          states["SAMPLE-06"].current_status == "hospital_ready"
+          and states["SAMPLE-06"].selected_hospital.id == "h4")
+
+    # audit + comms tables have real rows
+    check("audit events seeded",
+          db.query(models.AuditEvent).count() > 40,
+          str(db.query(models.AuditEvent).count()))
+    langs = {m.language for m in db.query(models.CommunicationMessage).all()}
+    check("comms in EN/HI/MR", langs == {"en", "hi", "mr"}, str(langs))
+
+    # fleet untouched by seeding
+    from app.seed import fleet_snapshot
+    fleet = fleet_snapshot(db)
+    check("fleet pristine after seed",
+          sum(1 for a in fleet["ambulances"]
+              if a["status"] == "available") == 12)
+
+    # review API works on the seeded review incident
+    from app.orchestrator import RecoveryManager
+    cap = Capture()
+    mgr = RecoveryManager(db=db, llm=DeterministicProvider(),
+                          broadcast=cap)
+    out = run(mgr.decide_review("SAMPLE-03", "approve", "seed test"))
+    check("approve on SAMPLE-03 completes with real resources",
+          out.current_status == "completed"
+          and out.selected_ambulance is not None
+          and out.selected_hospital is not None,
+          out.current_status)
+
+    # re-seed is idempotent
+    demo.seed_sample_data(db)
+    check("re-seed still 6 incidents",
+          db.query(models.Incident).count() == 6)
+
+    # reset clears everything
+    async def _br(m): pass
+    run(demo.reset_demo(db, broadcast=_br))
+    check("reset clears sample incidents",
+          db.query(models.Incident).count() == 0)
+    check("reset clears sample comms",
+          db.query(models.CommunicationMessage).count() == 0)
+    db.close()
+
+
 def test_routes_registered():
     print("demo: API routes registered")
     from app.api import router as api_router
@@ -327,7 +408,10 @@ def test_routes_registered():
     for want in ("/api/demo/scenarios",
                  "/api/demo/scenarios/{scenario_id}/run",
                  "/api/demo/scenarios/runs/{run_id}",
-                 "/api/demo/reset"):
+                 "/api/demo/reset",
+                 "/api/demo/seed-sample",
+                 "/api/demo/analytics",
+                 "/api/incidents/{incident_id}/communications"):
         check(f"route {want}", want in paths)
 
 
@@ -343,6 +427,7 @@ if __name__ == "__main__":
     test_flagship_fail_fast_on_exhausted_fleet()
     test_flagship_gate_rejects_failed_recovery()
     test_reset()
+    test_seed_sample()
     test_routes_registered()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

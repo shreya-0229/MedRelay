@@ -11,6 +11,8 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { useIncident } from "./hooks/useIncident";
 import { useIncidentDetails } from "./hooks/useIncidentDetails";
 import StatsBar from "./components/StatsBar";
+import AnalyticsRow from "./components/AnalyticsRow";
+import NoveltyShowcase from "./components/NoveltyShowcase";
 import PipelineStrip from "./components/PipelineStrip";
 import OverviewTable from "./components/OverviewTable";
 import AgentStatusPanel, {
@@ -34,6 +36,7 @@ function toSummary(inc: IncidentState): IncidentSummary {
     created_at: inc.created_at,
     ambulance_id: inc.selected_ambulance?.id ?? null,
     hospital_name: inc.selected_hospital?.name ?? null,
+    is_sample: inc.is_sample ?? false,
   };
 }
 
@@ -44,7 +47,7 @@ function Clock() {
     return () => window.clearInterval(t);
   }, []);
   return (
-    <span className="font-mono text-sm tabular-nums text-slate-300">
+    <span className="font-mono text-sm tabular-nums text-slate-700">
       {now.toLocaleTimeString("en-GB")}
     </span>
   );
@@ -187,7 +190,7 @@ export default function App() {
   const agentsOnline = health ? `${health.agents.length}/6` : "…";
 
   return (
-    <div className="min-h-screen bg-relay-bg font-sans text-slate-100">
+    <div className="min-h-screen bg-relay-bg font-sans text-slate-900">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-relay-border bg-relay-panel px-4 py-3">
         <div className="mr-auto flex items-center gap-2.5">
           <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
@@ -201,17 +204,17 @@ export default function App() {
           </div>
         </div>
         <Clock />
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-300">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-700">
           <span className={`inline-block h-2 w-2 rounded-full ${wsDot}`} />
           {wsText}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-400">
+        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
           Agents online: {agentsOnline}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-400">
+        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
           Active incidents: {stats?.active ?? "…"}
         </span>
-        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-400">
+        <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-600">
           LLM: {health?.llm_provider ?? "…"}
         </span>
         <span className="rounded-full border border-relay-border bg-relay-bg px-2.5 py-1 font-mono text-[11px] text-slate-500">
@@ -224,7 +227,7 @@ export default function App() {
             className={`px-3 py-2 text-xs font-bold transition-colors ${
               view === "command"
                 ? "bg-blue-600 text-white"
-                : "bg-relay-bg text-slate-400 hover:text-slate-200"
+                : "bg-relay-bg text-slate-600 hover:text-slate-800"
             }`}
           >
             Command
@@ -235,7 +238,7 @@ export default function App() {
             className={`px-3 py-2 text-xs font-bold transition-colors ${
               view === "demo"
                 ? "bg-amber-600 text-white"
-                : "bg-relay-bg text-slate-400 hover:text-slate-200"
+                : "bg-relay-bg text-slate-600 hover:text-slate-800"
             }`}
           >
             Demo Scenarios
@@ -262,6 +265,11 @@ export default function App() {
             setSelectedId(null);
             autoSelected.current = false;
           }}
+          onSeedDone={() => {
+            setSelectedId(null);
+            autoSelected.current = false;
+            void api.getIncidents().then((r) => setIncidents(r.incidents ?? []));
+          }}
         />
       ) : (
       <main className="mx-auto max-w-[1800px] space-y-4 px-4 py-4">
@@ -271,17 +279,17 @@ export default function App() {
             role="alert"
           >
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-            <p className="text-sm text-red-200">
+            <p className="text-sm text-red-800">
               <span className="font-bold">Backend unreachable.</span> Make sure
               the server is running, then retry.{" "}
-              <span className="font-mono text-xs text-red-200/70">
+              <span className="font-mono text-xs text-red-800/70">
                 {bootError}
               </span>
             </p>
             <button
               type="button"
               onClick={loadInitial}
-              className="ml-auto rounded-md border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 transition-colors hover:bg-red-500/20"
+              className="ml-auto rounded-md border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-800 transition-colors hover:bg-red-500/20"
             >
               Retry connection
             </button>
@@ -293,7 +301,7 @@ export default function App() {
             role="status"
           >
             <span className="relay-pulse inline-block h-2 w-2 rounded-full bg-amber-400" />
-            <p className="text-xs text-amber-200">
+            <p className="text-xs text-amber-800">
               Live feed disconnected — reconnecting automatically
               {pollFallback ? " · polling fallback active" : ""}.
             </p>
@@ -303,6 +311,15 @@ export default function App() {
         <PipelineStrip incident={selectedIncident} feed={feed} />
 
         <StatsBar stats={stats} />
+
+        <AnalyticsRow />
+
+        <NoveltyShowcase
+          incident={selectedIncident}
+          llmProvider={health?.llm_provider ?? null}
+          onSelectIncident={setSelectedId}
+          onGoDemo={() => setView("demo")}
+        />
 
         <OverviewTable
           summaries={incidents}

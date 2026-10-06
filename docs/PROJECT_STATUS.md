@@ -372,3 +372,67 @@ local demo only).
 incl. 3 new regression tests). Live-verified: flagship → `hospital_ready`
 (happy path); fleet exhausted → run `failed` with the Reset Demo message and
 no fake handoff.
+
+## Update — 2026-10-06 (white theme + novelty showcase + sample dataset)
+
+Judging-polish pass requested for the 9 Oct final pitch: a clean light
+theme, all 7 novelty angles surfaced in the UI, and a pre-loaded sample
+dataset so judges see a living dashboard. Backend pipeline, orchestrator,
+recovery, and verification behavior are **unchanged** (additive only).
+
+**White theme.** The full frontend moved from dark navy to a clean light
+theme: `relay.bg #f4f7fb`, `relay.panel #ffffff`, `relay.panel2 #eef2f7`,
+`relay.border #dbe3ec`, slate-900/800/700 text, blue-600/teal accents,
+soft card shadows. Systematically converted (token redefinition + slate
+flip + accent contrast pass + hand-fixed SVG fills in the agent graph,
+map, and coordinate-grid fallback). The Leaflet basemap switched from
+Esri dark canvas to Esri street map to match; the offline coordinate grid
+is light too. `prefers-reduced-motion` and responsive breakpoints kept.
+
+**Sample dataset** (`POST /api/demo/seed-sample`, in `backend/app/demo.py`):
+6 realistic pre-run incidents written as REAL DB rows (full IncidentState
+JSON, audit events, agent runs, EN/HI/MR communications), each flagged
+`is_sample=True` (new boolean column on `incidents`, default false; boot
+migrates older DBs via `ALTER TABLE`; also mirrored in `IncidentState`
+and `IncidentSummary` payloads). The set:
+1. `SAMPLE-01` critical road accident → `hospital_ready` (with ambulance
+   breakdown → replacement recovery),
+2. `SAMPLE-02` heart emergency → `hospital_ready`,
+3. `SAMPLE-03` vague report → `human_review_required` (ACTIVE — judges
+   decide live via the real review API; verified: Approve dispatches a
+   real ambulance and completes),
+4. `SAMPLE-04` agent conflict (BLS for critical) → `escalated`,
+   verification vetoed,
+5. `SAMPLE-05` moderate fracture → `hospital_ready`,
+6. `SAMPLE-06` hospital outage → replacement → `hospital_ready`.
+The fleet is never touched by seeding (stays pristine for live demos).
+Re-seeding replaces the previous sample set; Reset Demo wipes it with
+everything else. Dashboard button "Load sample data" (with confirm) in
+the Demo Scenarios tab; rows/detail carry a violet SAMPLE badge.
+
+**Novelty showcase** ("Why MedRelay wins" section): 7 cards, one per
+novelty angle, every stat live — verification veto (selected incident's
+real X/8 checks), failure recovery (real recovery-event count), human
+review (live review-queue count + "Open live review" jump), deterministic
+rails (LLM provider badge), trilingual comms (live message count),
+audit trail (live event count), judging mode (scenario cards + jump).
+
+**Analytics row**: severity-distribution donut (SVG), verification
+pass-rate, messages sent, audit events, review queue — all from the new
+`GET /api/demo/analytics` (computed live from the DB, 10s refresh).
+
+**Verification checks panel**: the incident detail now explains each of
+the 8 checks in plain language next to the real pass/fail + agent detail.
+
+**Comms viewer**: incident detail reads the durable `communications`
+table via new `GET /api/incidents/{id}/communications` with EN/HI/MR tabs.
+
+**Incident replay**: step-through viewer walking the real audit events in
+chronological order (Prev/Next + progress + event stepper).
+
+**Tests: 246/246 pass** (52 agents + 34 orchestrator + 62 recovery +
+98 demo, incl. 20 new seed/sample assertions). Verified live on a fresh
+DB: boot → seed → 6 sample incidents in the list API → review dossier on
+SAMPLE-03 → flagship `main_judging` → `hospital_ready` → Reset Demo
+clears all 7 incidents. Frontend `tsc + vite` build clean; served `dist`
+rebuilt.

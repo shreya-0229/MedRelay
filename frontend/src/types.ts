@@ -101,6 +101,8 @@ export interface IncidentState {
   escalation_status: EscalationStatus;
   review: ReviewState;
   timeline: TimelineEntry[];
+  /** True when seeded by POST /api/demo/seed-sample (judging sample data). */
+  is_sample?: boolean;
 }
 
 /** Compact row from GET /api/incidents, newest first. */
@@ -113,6 +115,8 @@ export interface IncidentSummary {
   created_at: string;
   ambulance_id: string | null;
   hospital_name: string | null;
+  /** True when seeded by POST /api/demo/seed-sample (judging sample data). */
+  is_sample?: boolean;
 }
 
 export interface AuditEvent {
@@ -284,7 +288,6 @@ export type AgentStatus =
   | "HUMAN REVIEW";
 
 /* ---------- Demo mode ---------- */
-
 export interface DemoStepRule {
   type: "action" | "action_all" | "incident_known" | "incident_status";
   match?: string;
@@ -317,4 +320,30 @@ export interface DemoRunStatus {
   error: string;
   started_at: string;
   finished_at: string | null;
+}
+
+/* ---------- Sample dataset + analytics ---------- */
+
+export interface SampleSeedResult {
+  status: string;
+  incidents: string[];
+  is_sample: boolean;
+}
+
+export interface CommsMessage {
+  id: number;
+  channel: string;
+  language: string;
+  text: string;
+  ts: string;
+}
+
+export interface Analytics {
+  severity_distribution: Record<string, number>;
+  verification: { passed: number; total: number; pass_rate: number | null };
+  comms_sent: number;
+  audit_events: number;
+  review_queue: number;
+  avg_confidence: number | null;
+  incidents: number;
 }
