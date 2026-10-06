@@ -93,7 +93,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-relay-border bg-relay-panel p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-100">New incident</h2>
+            <h2 className="text-lg font-bold text-slate-900">New incident</h2>
             <p className="text-xs text-slate-500">
               Dispatches the full 6-agent pipeline.
             </p>
@@ -101,7 +101,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           <button
             type="button"
             onClick={() => setForm({ ...DEMO_FILL })}
-            className="shrink-0 rounded-md border border-sky-500/50 bg-sky-500/10 px-2.5 py-1.5 text-xs font-medium text-sky-300 transition-colors hover:bg-sky-500/20"
+            className="shrink-0 rounded-md border border-sky-500/50 bg-sky-500/10 px-2.5 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-500/20"
           >
             Fill cardiac-arrest demo
           </button>
@@ -109,7 +109,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-600">
               Incident type
             </label>
             <select
@@ -127,7 +127,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Latitude
               </label>
               <input
@@ -138,7 +138,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Longitude
               </label>
               <input
@@ -151,7 +151,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-600">
               Address
             </label>
             <input
@@ -163,7 +163,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-600">
               Patient count
             </label>
             <input
@@ -176,7 +176,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-600">
               Symptoms (comma-separated)
             </label>
             <input
@@ -189,7 +189,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Breathing
               </label>
               <select
@@ -203,7 +203,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Bleeding
               </label>
               <select
@@ -219,7 +219,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-slate-600">
               Family contact
             </label>
             <input
@@ -239,7 +239,7 @@ export default function NewIncidentModal({ open, onClose, onCreated }: Props) {
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-md border border-relay-border px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-relay-panel2 disabled:opacity-50"
+              className="rounded-md border border-relay-border px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-relay-panel2 disabled:opacity-50"
             >
               Cancel
             </button>

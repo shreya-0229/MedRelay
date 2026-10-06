@@ -12,9 +12,10 @@ runs, so a reset in the middle of a scenario can never corrupt later runs.
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,7 +30,21 @@ from app.orchestrator import (
 )
 from app.orchestrator.event_bus import EventBus
 from app.orchestrator.state_manager import StateManager
-from app.schemas import FailureInjection, IncidentReport, IncidentState
+from app.schemas import (
+    AgentOutput,
+    AmbulanceSelection,
+    Communication,
+    FailureInjection,
+    HospitalSelection,
+    IncidentReport,
+    IncidentState,
+    Location,
+    ReviewState,
+    TimelineEntry,
+    TriageResult,
+    VerificationCheck,
+    VerificationResults,
+)
 from app.seed import fleet_snapshot, reseed_fleet
 
 
@@ -634,3 +649,585 @@ async def reset_demo(db: Session, *, broadcast: Broadcast) -> dict[str, Any]:
     await broadcast({"type": "fleet_update", "fleet": fleet_snapshot(db)})
     await broadcast({"type": "incident_list", "incidents": []})
     return {"status": "reset", "incidents_deleted": incidents_deleted}
+
+
+# ---------------------------------------------------------------------------
+# Sample-day dataset (judging aid).
+#
+# POST /api/demo/seed-sample writes 6 realistic, pre-run incidents as REAL
+# DB rows (full IncidentState JSON, audit events, EN/HI/MR communications),
+# each flagged ``is_sample=True`` so the dashboard badges them SAMPLE.
+# One incident pauses at ``human_review_required`` so judges can Approve /
+# Reject / Request-info / Replan live against the real review API.
+# Reset Demo wipes the sample rows with everything else.
+#
+# These rows are static history — they never touch the live fleet, the
+# pipeline, or the orchestrator. The fleet stays pristine so a flagship
+# demo can still run right after seeding.
+# ---------------------------------------------------------------------------
+
+_SEV_LABELS = {5: "CRITICAL", 4: "HIGH", 3: "MODERATE", 2: "LOW", 1: "MINIMAL"}
+
+_TRIAGE_DISCLAIMER = (
+    "AI-assisted triage is decision support, not a clinical diagnosis; "
+    "a human dispatcher owns the final call.")
+
+
+def _sout(agent: str, incident_id: str, ts: datetime, *,
+          status: str = "success", confidence: float = 0.9,
+          decision: dict | None = None, reasoning: str = "",
+          warnings: list | None = None,
+          requires_human: bool = False) -> AgentOutput:
+    """One realistic agent output envelope for a seeded incident."""
+    dec = dict(decision or {})
+    return AgentOutput(
+        agent_name=agent, confidence=confidence, rationale=reasoning,
+        data=dict(dec), success=(status == "success"),
+        agent=agent, incident_id=incident_id, status=status,
+        decision=dec, reasoning_summary=reasoning,
+        warnings=list(warnings or []), requires_human=requires_human,
+        timestamp=ts)
+
+
+def _schecks(incident_id: str, *, failed: dict[str, str] | None = None,
+             amb_id: str = "", amb_cap: str = "", hosp_name: str = "",
+             severity: int = 5, pathway: str = "trauma-center",
+             amb_status: str = "en_route",
+             hosp_status: str = "reserved") -> VerificationResults:
+    """The 8 real verification checks, all passing unless ``failed`` names
+    specific ones with their failure detail (mirrors VerificationAgent)."""
+    failed = failed or {}
+
+    def ck(name: str, detail_ok: str) -> VerificationCheck:
+        if name in failed:
+            return VerificationCheck(name=name, passed=False,
+                                     detail=failed[name])
+        return VerificationCheck(name=name, passed=True, detail=detail_ok)
+
+    checks = [
+        ck("required_fields_present",
+           f"incident_id={incident_id!r} incident_type present "
+           f"location=ok patient_count>=1"),
+        ck("triage_valid",
+           f"severity {severity} in 1-5, pathway {pathway!r} known"),
+        ck("triage_consistency_ok",
+           f"severity {severity} -> label {_SEV_LABELS[severity]!r} matches; "
+           f"disclaimer present"),
+        ck("confidence_thresholds_ok", "all agents meet the 0.6 confidence floor"),
+        ck("ambulance_capability_ok",
+           f"{amb_id} ({amb_cap}) satisfies the ALS rule"
+           if amb_id else "no ambulance selected"),
+        ck("ambulance_assignment_ok",
+           f"{amb_id} en_route to {incident_id}"
+           if amb_id else "no ambulance selected"),
+        ck("hospital_bed_ok",
+           f"{hosp_name}: pathway {pathway!r} covered, "
+           f"hospital_status={hosp_status}"
+           if hosp_name else "no hospital selected"),
+        ck("resource_consistency_ok", "resources match agent outcomes"),
+    ]
+    issues = [f"{c.name}: {c.detail}" for c in checks if not c.passed]
+    return VerificationResults(passed=not issues, issues=issues, checks=checks)
+
+
+def _insert_sample(db: Session, *, incident_id: str, created_at: datetime,
+                   incident_type: str, address: str, lat: float, lon: float,
+                   patient_count: int, symptoms: list[str],
+                   breathing: str, bleeding: str,
+                   severity: int | None, pathway: str | None,
+                   triage_conf: float, triage_rationale: str,
+                   dispatch_conf: float, dispatch_decision: dict | None,
+                   hospital_conf: float, hospital_decision: dict | None,
+                   sel_amb: tuple[str, str, float] | None,
+                   sel_hosp: tuple[str, str, float] | None,
+                   verification: VerificationResults | None,
+                   overall_conf: float, current_status: str,
+                   escalation_status: str,
+                   review: ReviewState | None,
+                   timeline: list[tuple[int, str, str]],
+                   audit: list[tuple[int, str, str, str, float]],
+                   comms: list[tuple[int, str, str, str]],
+                   family_contact: str = "+91 98220 00000") -> None:
+    """Write one complete sample incident: state row + audit events +
+    agent runs + communications. Offsets are seconds after ``created_at``."""
+    ts = lambda off: created_at + timedelta(seconds=off)
+
+    triage = (TriageResult(severity=severity, pathway=pathway,
+                           confidence=triage_conf,
+                           rationale=triage_rationale)
+              if severity is not None else None)
+    amb = (AmbulanceSelection(id=sel_amb[0], capability=sel_amb[1],
+                              eta_min=sel_amb[2]) if sel_amb else None)
+    hosp = (HospitalSelection(id=sel_hosp[0], name=sel_hosp[1],
+                              distance_km=sel_hosp[2]) if sel_hosp else None)
+
+    outputs: dict[str, AgentOutput] = {}
+    outputs["IntakeAgent"] = _sout(
+        "IntakeAgent", incident_id, ts(timeline[0][0]),
+        confidence=0.98, reasoning="Report validated and normalized; nothing invented.",
+        decision={"incident_type": incident_type, "patient_count": patient_count,
+                  "location": address})
+    if triage is not None:
+        req_human = triage_conf < 0.6
+        outputs["TriageAgent"] = _sout(
+            "TriageAgent", incident_id, ts(timeline[1][0] if len(timeline) > 1 else 5),
+            status="escalated" if req_human else "success",
+            confidence=triage_conf,
+            reasoning=triage_rationale,
+            decision={"severity": severity, "pathway": pathway,
+                      "severity_label": _SEV_LABELS.get(severity or 0),
+                      "disclaimer": _TRIAGE_DISCLAIMER},
+            warnings=(["Low confidence — routing to human review"]
+                      if req_human else []),
+            requires_human=req_human)
+    if sel_amb is not None:
+        outputs["DispatchAgent"] = _sout(
+            "DispatchAgent", incident_id, ts(12), confidence=dispatch_conf,
+            reasoning=(f"{sel_amb[0]} ({sel_amb[1]}) selected: nearest capable "
+                       f"unit, ETA {sel_amb[2]} min."),
+            decision=dict(dispatch_decision or {},
+                          selected_ambulance={"id": sel_amb[0],
+                                              "capability": sel_amb[1],
+                                              "eta_min": sel_amb[2]}))
+    if sel_hosp is not None:
+        outputs["HospitalLiaisonAgent"] = _sout(
+            "HospitalLiaisonAgent", incident_id, ts(14),
+            confidence=hospital_conf,
+            reasoning=(f"{sel_hosp[1]} selected: {pathway} specialty, "
+                       f"bed available, {sel_hosp[2]} km away."),
+            decision=dict(hospital_decision or {},
+                          selected_hospital={"id": sel_hosp[0],
+                                             "name": sel_hosp[1],
+                                             "distance_km": sel_hosp[2]}))
+    if verification is not None:
+        outputs["VerificationAgent"] = _sout(
+            "VerificationAgent", incident_id, ts(20),
+            status="success" if verification.passed else "failed",
+            confidence=0.99 if verification.passed else 0.45,
+            reasoning=("All verification checks passed."
+                       if verification.passed
+                       else f"Verification failed on {len(verification.issues)} check(s)."),
+            decision={"passed": verification.passed,
+                      "checks": [c.model_dump() for c in verification.checks],
+                      "issues": verification.issues},
+            warnings=verification.issues)
+
+    state = IncidentState(
+        incident_id=incident_id, created_at=created_at,
+        incident_type=incident_type,
+        location=Location(lat=lat, lon=lon, address=address),
+        patient_count=patient_count, symptoms=symptoms,
+        breathing_status=breathing, bleeding_status=bleeding,
+        severity=severity, triage_result=triage,
+        selected_ambulance=amb, selected_hospital=hosp,
+        hospital_status="reserved" if sel_hosp else "pending",
+        ambulance_status="en_route" if sel_amb else "pending",
+        family_contact=family_contact,
+        communications=[Communication(channel=ch, text=text, ts=ts(off))
+                        for off, ch, _lang, text in comms],
+        agent_outputs=outputs, verification_results=verification,
+        confidence=overall_conf, current_status=current_status,
+        escalation_status=escalation_status,
+        review=review or ReviewState(),
+        timeline=[TimelineEntry(ts=ts(off), event=ev, detail=det)
+                  for off, ev, det in timeline],
+        is_sample=True)
+
+    row = models.Incident(
+        incident_id=incident_id, state_json=state.model_dump_json(),
+        current_status=current_status, escalation_status=escalation_status,
+        created_at=created_at, is_sample=True)
+    db.add(row)
+    db.flush()
+
+    for off, agent, action, rationale, conf in audit:
+        db.add(models.AuditEvent(incident_id=incident_id, ts=ts(off),
+                                 agent=agent, action=action,
+                                 rationale=rationale, confidence=conf))
+    for name, out in outputs.items():
+        db.add(models.AgentRun(incident_id=incident_id, agent_name=name,
+                               confidence=out.confidence, success=out.success,
+                               rationale=out.rationale,
+                               data_json=json.dumps(out.data, default=str),
+                               ts=out.timestamp))
+    for off, channel, language, text in comms:
+        db.add(models.CommunicationMessage(incident_id=incident_id,
+                                           channel=channel, language=language,
+                                           text=text, ts=ts(off)))
+    db.commit()
+
+
+def _clear_samples(db: Session) -> int:
+    """Remove any previously seeded sample set (idempotent re-seed)."""
+    ids = [r.incident_id for r in
+           db.query(models.Incident)
+             .filter(models.Incident.is_sample == True).all()]  # noqa: E712
+    if not ids:
+        return 0
+    db.query(models.CommunicationMessage)\
+      .filter(models.CommunicationMessage.incident_id.in_(ids)).delete(
+          synchronize_session=False)
+    db.query(models.AgentRun)\
+      .filter(models.AgentRun.incident_id.in_(ids)).delete(
+          synchronize_session=False)
+    db.query(models.AuditEvent)\
+      .filter(models.AuditEvent.incident_id.in_(ids)).delete(
+          synchronize_session=False)
+    n = db.query(models.Incident)\
+          .filter(models.Incident.is_sample == True).delete(  # noqa: E712
+              synchronize_session=False)
+    db.commit()
+    return n
+
+
+def seed_sample_data(db: Session) -> dict[str, Any]:
+    """Insert the 6-incident "sample day" judging dataset.
+
+    Returns a summary dict. Re-seeding replaces the previous sample set;
+    the live fleet is never touched.
+    """
+    _clear_samples(db)
+    now = datetime.now(timezone.utc)
+    seeded: list[str] = []
+
+    # -- 1. Critical road accident WITH ambulance recovery (2h ago) --------
+    t0 = now - timedelta(hours=2, minutes=5)
+    v1 = _schecks("SAMPLE-01", amb_id="A3", amb_cap="ALS",
+                  hosp_name="Shivajinagar Trauma Institute",
+                  severity=5, pathway="trauma-center")
+    _insert_sample(
+        db, incident_id="SAMPLE-01", created_at=t0,
+        incident_type="road_accident",
+        address="Hadapsar Bypass, near Gadital, Pune",
+        lat=18.5074, lon=73.9252, patient_count=2,
+        symptoms=["severe bleeding", "unconscious", "head injury"],
+        breathing="labored", bleeding="severe",
+        severity=5, pathway="trauma-center", triage_conf=0.95,
+        triage_rationale=("Vitals override: road_accident maps to HIGH, but "
+                          "severe bleeding + labored breathing escalate to "
+                          "CRITICAL per the physiology ladder."),
+        dispatch_conf=0.92, dispatch_decision={"eta_min": 9.2},
+        hospital_conf=0.90, hospital_decision={"beds_free_after": 104},
+        sel_amb=("A3", "ALS", 9.2), sel_hosp=("h6", "Shivajinagar Trauma Institute", 12.4),
+        verification=v1, overall_conf=0.90,
+        current_status="hospital_ready", escalation_status="none",
+        review=None,
+        timeline=[
+            (0, "incident_created", "Free-text 112-style report received."),
+            (4, "intake_completed", "Report parsed: road_accident, 2 patients, severe bleeding."),
+            (9, "triage_completed", "CRITICAL (5) · trauma-center — vitals override applied."),
+            (14, "dispatch_completed", "Ambulance A1 (ALS) dispatched, ETA 7.5 min."),
+            (16, "hospital_selected", "Bed reserved at Shivajinagar Trauma Institute (trauma-center)."),
+            (21, "verification_passed", "All 8 verification checks passed."),
+            (26, "notifications_sent", "Family notified in EN/HI/MR; ER pre-alert sent."),
+            (480, "failure_detected", "Ambulance A1 reported a breakdown 8 min into the response."),
+            (486, "ambulance_failure", "A1 marked out_of_service after verification of the failure."),
+            (492, "replanning", "Orchestrator replanning: failed unit excluded from search."),
+            (501, "dispatch_completed", "Replacement ambulance A3 (ALS) dispatched, ETA 9.2 min."),
+            (508, "verification_passed", "Replacement verified against all 8 checks."),
+            (512, "resource_replaced", "A1 → A3; family notified of the new ETA in EN/HI/MR."),
+            (520, "hospital_ready", "Receiving trauma team at Shivajinagar is standing by."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "road_accident, 2 patients extracted", 0.98),
+            (9, "TriageAgent", "Triage decision", "CRITICAL via vitals override", 0.95),
+            (14, "DispatchAgent", "Ambulance dispatched", "A1 (ALS), ETA 7.5 min", 0.92),
+            (16, "HospitalLiaisonAgent", "Hospital bed reserved", "Shivajinagar Trauma Institute", 0.90),
+            (21, "VerificationAgent", "Verification passed", "8/8 checks", 0.99),
+            (26, "CommunicationAgent", "Notifications sent", "EN/HI/MR family + ER pre-alert", 0.97),
+            (480, "RecoveryManager", "Failure detected", "A1 breakdown reported mid-response", 1.0),
+            (486, "RecoveryManager", "Ambulance failure", "A1 verified out_of_service", 1.0),
+            (492, "Orchestrator", "Replanning after failure", "excluding failed unit A1", 0.9),
+            (501, "DispatchAgent", "Ambulance dispatched", "replacement A3 (ALS), ETA 9.2 min", 0.92),
+            (508, "VerificationAgent", "Verification passed", "replacement verified, 8/8", 0.99),
+            (512, "RecoveryManager", "Family notified of replacement", "new ETA in EN/HI/MR", 0.97),
+            (520, "Orchestrator", "Incident status: hospital_ready", "trauma team standing by", 1.0),
+        ],
+        comms=[
+            (26, "family", "en",
+             "MedRelay: Ambulance A1 (ALS) is on the way to Hadapsar Bypass. ETA ~8 min. 2 injured, severe bleeding reported. Bed reserved at Shivajinagar Trauma Institute."),
+            (26, "family", "hi",
+             "MedRelay: एम्बुलेंस A1 (ALS) हडपसर बायपास के लिए रवाना हो गई है। ETA ~8 मिनट। 2 घायल, गंभीर रक्तस्राव। शिवाजीनगर ट्रॉमा इंस्टीट्यूट में बेड आरक्षित।"),
+            (26, "family", "mr",
+             "MedRelay: रुग्णवाहिका A1 (ALS) हडपसर बायपासकडे निघाली आहे. अंदाजे वेळ ~8 मिनिटे. 2 जखमी, गंभीर रक्तस्राव. शिवाजीनगर ट्रॉमा इन्स्टिट्यूटमध्ये बेड राखीव."),
+            (512, "family", "en",
+             "MedRelay update: Ambulance A1 broke down; replacement A3 (ALS) is now en route. New ETA ~9 min. Your family member's care continues without interruption."),
+            (512, "family", "hi",
+             "MedRelay अपडेट: एम्बुलेंस A1 खराब हो गई; नई एम्बुलेंस A3 (ALS) रवाना हो गई है। नया ETA ~9 मिनट।"),
+            (512, "family", "mr",
+             "MedRelay अपडेट: रुग्णवाहिका A1 बंद पडली; नवीन रुग्णवाहिका A3 (ALS) निघाली आहे. नवीन अंदाजे वेळ ~9 मिनिटे."),
+            (26, "hospital", "en",
+             "ER pre-alert: 2 trauma patients inbound to Shivajinagar Trauma Institute, ETA ~20 min. Severe bleeding, 1 unconscious."),
+        ])
+    seeded.append("SAMPLE-01")
+
+    # -- 2. Heart emergency, clean happy path (5h ago) ----------------------
+    t0 = now - timedelta(hours=5, minutes=12)
+    v2 = _schecks("SAMPLE-02", amb_id="A4", amb_cap="ALS",
+                  hosp_name="Baner Lifeline Hospital",
+                  severity=5, pathway="cath-lab")
+    _insert_sample(
+        db, incident_id="SAMPLE-02", created_at=t0,
+        incident_type="cardiac_arrest",
+        address="FC Road, Shivajinagar, Pune",
+        lat=18.5314, lon=73.8446, patient_count=1,
+        symptoms=["chest pain", "collapsed", "unresponsive"],
+        breathing="absent", bleeding="none",
+        severity=5, pathway="cath-lab", triage_conf=0.95,
+        triage_rationale="cardiac_arrest → CRITICAL / cath-lab per deterministic lookup.",
+        dispatch_conf=0.92, dispatch_decision={"eta_min": 4.1},
+        hospital_conf=0.90, hospital_decision={"beds_free_after": 117},
+        sel_amb=("A4", "ALS", 4.1), sel_hosp=("h2", "Baner Lifeline Hospital", 8.3),
+        verification=v2, overall_conf=0.90,
+        current_status="hospital_ready", escalation_status="none",
+        review=None,
+        timeline=[
+            (0, "incident_created", "Cardiac arrest report received."),
+            (4, "intake_completed", "Report parsed: cardiac_arrest, 1 patient, not breathing."),
+            (9, "triage_completed", "CRITICAL (5) · cath-lab."),
+            (14, "dispatch_completed", "Ambulance A4 (ALS) dispatched, ETA 4.1 min."),
+            (16, "hospital_selected", "Cath-lab bed reserved at Baner Lifeline Hospital."),
+            (21, "verification_passed", "All 8 verification checks passed."),
+            (26, "notifications_sent", "Family notified in EN/HI/MR; ER pre-alert sent."),
+            (40, "hospital_ready", "Cath-lab team at Baner Lifeline is standing by."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "cardiac_arrest, 1 patient", 0.98),
+            (9, "TriageAgent", "Triage decision", "CRITICAL / cath-lab", 0.95),
+            (14, "DispatchAgent", "Ambulance dispatched", "A4 (ALS), ETA 4.1 min", 0.92),
+            (16, "HospitalLiaisonAgent", "Hospital bed reserved", "Baner Lifeline Hospital", 0.90),
+            (21, "VerificationAgent", "Verification passed", "8/8 checks", 0.99),
+            (26, "CommunicationAgent", "Notifications sent", "EN/HI/MR family + ER pre-alert", 0.97),
+            (40, "Orchestrator", "Incident status: hospital_ready", "cath-lab team standing by", 1.0),
+        ],
+        comms=[
+            (26, "family", "en",
+             "MedRelay: Ambulance A4 (ALS) is rushing to FC Road. ETA ~4 min. The patient is being taken to Baner Lifeline Hospital (cardiac unit)."),
+            (26, "family", "hi",
+             "MedRelay: एम्बुलेंस A4 (ALS) FC रोड के लिए रवाना हो गई है। ETA ~4 मिनट। मरीज़ को बानेर लाइफ़लाइन अस्पताल (कार्डियक यूनिट) ले जाया जा रहा है।"),
+            (26, "family", "mr",
+             "MedRelay: रुग्णवाहिका A4 (ALS) FC रोडकडे निघाली आहे. अंदाजे वेळ ~4 मिनिटे. रुग्णाला बानेर लाइफलाइन रुग्णालय (हृदय विभाग) येथे नेले जात आहे."),
+        ])
+    seeded.append("SAMPLE-02")
+
+    # -- 3. Vague report → ACTIVE human review (judges decide live) ---------
+    t0 = now - timedelta(minutes=42)
+    review3 = ReviewState(
+        status="pending",
+        reason=("Triage confidence 0.55 is below the 0.6 safety floor — the "
+                "pipeline paused BEFORE any ambulance or bed was reserved."),
+        affected_decision="triage", confidence=0.55, note="",
+        decided_at=None)
+    _insert_sample(
+        db, incident_id="SAMPLE-03", created_at=t0,
+        incident_type="unknown",
+        address="Deccan Gymkhana bus stop, Pune",
+        lat=18.5120, lon=73.8320, patient_count=1,
+        symptoms=["unclear"],
+        breathing="normal", bleeding="none",
+        severity=3, pathway="general-er", triage_conf=0.55,
+        triage_rationale=("Unknown incident type — deterministic fallback "
+                          "severity 3 / general-er at 0.55 confidence; flagged "
+                          "for human review instead of proceeding blindly."),
+        dispatch_conf=0.0, dispatch_decision=None,
+        hospital_conf=0.0, hospital_decision=None,
+        sel_amb=None, sel_hosp=None,
+        verification=None, overall_conf=0.55,
+        current_status="human_review_required", escalation_status="none",
+        review=review3,
+        timeline=[
+            (0, "incident_created", "Vague caller report received."),
+            (4, "intake_completed", "Report parsed; key details missing (no symptoms, no vitals)."),
+            (9, "triage_completed", "Fallback triage at 0.55 confidence — below the 0.6 floor."),
+            (12, "human_review_required", "Pipeline paused BEFORE reservations; operator decision needed."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "1 patient, details sparse", 0.98),
+            (9, "TriageAgent", "Triage decision", "fallback 3/general-er at 0.55", 0.55),
+            (12, "Orchestrator", "Human review required", "confidence 0.55 < 0.6 floor; paused before reservations", 1.0),
+        ],
+        comms=[])
+    seeded.append("SAMPLE-03")
+
+    # -- 4. Agent conflict → escalated --------------------------------------
+    t0 = now - timedelta(hours=3, minutes=20)
+    v4 = _schecks(
+        "SAMPLE-04",
+        failed={
+            "triage_consistency_ok":
+                "severity 5 (CRITICAL) requires ALS, but BLS unit A6 was selected",
+            "confidence_thresholds_ok":
+                "below threshold or failed: DispatchAgent",
+        },
+        amb_id="A6", amb_cap="BLS",
+        hosp_name="Shivajinagar Trauma Institute",
+        severity=5, pathway="trauma-center")
+    review4 = ReviewState(
+        status="pending",
+        reason=("Verification vetoed the plan: a BLS ambulance was proposed "
+                "for a CRITICAL case. Reservations were blocked and released."),
+        affected_decision="conflict", confidence=0.45, note="",
+        decided_at=None)
+    _insert_sample(
+        db, incident_id="SAMPLE-04", created_at=t0,
+        incident_type="road_accident",
+        address="Katraj Ghat, Pune",
+        lat=18.4529, lon=73.8619, patient_count=1,
+        symptoms=["fractured leg", "conscious"],
+        breathing="normal", bleeding="minor",
+        severity=5, pathway="trauma-center", triage_conf=0.95,
+        triage_rationale="Road accident with vitals override → CRITICAL / trauma-center.",
+        dispatch_conf=0.30, dispatch_decision={"eta_min": 11.0, "note": "conflicting BLS assignment"},
+        hospital_conf=0.90, hospital_decision={"beds_free_after": 103},
+        sel_amb=("A6", "BLS", 11.0), sel_hosp=("h6", "Shivajinagar Trauma Institute", 9.8),
+        verification=v4, overall_conf=0.30,
+        current_status="escalated", escalation_status="escalated",
+        review=review4,
+        timeline=[
+            (0, "incident_created", "Road accident report received."),
+            (4, "intake_completed", "Report parsed: road_accident, 1 patient."),
+            (9, "triage_completed", "CRITICAL (5) · trauma-center."),
+            (14, "dispatch_completed", "CONFLICT: BLS unit A6 proposed for a CRITICAL case."),
+            (16, "hospital_selected", "Bed reserved at Shivajinagar Trauma Institute."),
+            (21, "verification_failed", "Veto: triage_consistency_ok + confidence_thresholds_ok failed."),
+            (24, "conflict_detected", "BLS-for-critical contradiction contained; reservations released."),
+            (28, "human_escalation", "Incident escalated to a human dispatcher with the conflict dossier."),
+            (30, "notifications_sent", "Escalation notice sent to family in EN/HI/MR."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "road_accident, 1 patient", 0.98),
+            (9, "TriageAgent", "Triage decision", "CRITICAL / trauma-center", 0.95),
+            (14, "DispatchAgent", "Ambulance dispatched", "A6 (BLS) — conflicts with CRITICAL", 0.30),
+            (16, "HospitalLiaisonAgent", "Hospital bed reserved", "Shivajinagar Trauma Institute", 0.90),
+            (21, "VerificationAgent", "Verification failed", "triage_consistency_ok, confidence_thresholds_ok", 0.45),
+            (24, "Orchestrator", "Agent conflict detected", "BLS for critical; reservations released", 1.0),
+            (28, "Orchestrator", "Human escalation", "conflict dossier attached", 1.0),
+            (30, "CommunicationAgent", "Notifications sent", "escalation notice EN/HI/MR", 0.97),
+        ],
+        comms=[
+            (30, "escalation", "en",
+             "MedRelay: your emergency at Katraj Ghat needs a human dispatcher's decision. A specialist is reviewing the case right now; an update will follow shortly."),
+            (30, "escalation", "hi",
+             "MedRelay: कात्रज घाट की आपकी आपात स्थिति पर मानव डिस्पैचर का निर्णय आवश्यक है। एक विशेषज्ञ मामले की समीक्षा कर रहा है।"),
+            (30, "escalation", "mr",
+             "MedRelay: कात्रज घाट येथील आपत्कालीन परिस्थितीसाठी मानवी डिस्पॅचरचा निर्णय आवश्यक आहे. तज्ज्ञ या प्रकरणाचा आढावा घेत आहे."),
+        ])
+    seeded.append("SAMPLE-04")
+
+    # -- 5. Moderate fracture, clean path (1 day ago) ------------------------
+    t0 = now - timedelta(hours=26)
+    v5 = _schecks("SAMPLE-05", amb_id="A7", amb_cap="BLS",
+                  hosp_name="PCCOE General Hospital",
+                  severity=3, pathway="general-er")
+    _insert_sample(
+        db, incident_id="SAMPLE-05", created_at=t0,
+        incident_type="trauma_fall",
+        address="Akurdi Railway Station, Pune",
+        lat=18.6500, lon=73.7700, patient_count=1,
+        symptoms=["fractured arm", "conscious", "stable"],
+        breathing="normal", bleeding="minor",
+        severity=3, pathway="general-er", triage_conf=0.95,
+        triage_rationale="trauma_fall → MODERATE / general-er per deterministic lookup.",
+        dispatch_conf=0.92, dispatch_decision={"eta_min": 6.8},
+        hospital_conf=0.90, hospital_decision={"beds_free_after": 95},
+        sel_amb=("A7", "BLS", 6.8), sel_hosp=("h1", "PCCOE General Hospital", 3.2),
+        verification=v5, overall_conf=0.90,
+        current_status="hospital_ready", escalation_status="none",
+        review=None,
+        timeline=[
+            (0, "incident_created", "Fall injury report received."),
+            (4, "intake_completed", "Report parsed: trauma_fall, 1 patient, stable."),
+            (9, "triage_completed", "MODERATE (3) · general-er."),
+            (14, "dispatch_completed", "Ambulance A7 (BLS) dispatched, ETA 6.8 min."),
+            (16, "hospital_selected", "Bed reserved at PCCOE General Hospital."),
+            (21, "verification_passed", "All 8 verification checks passed."),
+            (26, "notifications_sent", "Family notified in EN/HI/MR."),
+            (40, "hospital_ready", "ER team at PCCOE General is standing by."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "trauma_fall, 1 patient", 0.98),
+            (9, "TriageAgent", "Triage decision", "MODERATE / general-er", 0.95),
+            (14, "DispatchAgent", "Ambulance dispatched", "A7 (BLS), ETA 6.8 min", 0.92),
+            (16, "HospitalLiaisonAgent", "Hospital bed reserved", "PCCOE General Hospital", 0.90),
+            (21, "VerificationAgent", "Verification passed", "8/8 checks", 0.99),
+            (26, "CommunicationAgent", "Notifications sent", "EN/HI/MR family", 0.97),
+            (40, "Orchestrator", "Incident status: hospital_ready", "ER team standing by", 1.0),
+        ],
+        comms=[
+            (26, "family", "en",
+             "MedRelay: Ambulance A7 is on the way to Akurdi Railway Station. ETA ~7 min. Bed reserved at PCCOE General Hospital."),
+            (26, "family", "hi",
+             "MedRelay: एम्बुलेंस A7 आकुर्डी रेलवे स्टेशन के लिए रवाना हो गई है। ETA ~7 मिनट। PCCOE जनरल अस्पताल में बेड आरक्षित।"),
+            (26, "family", "mr",
+             "MedRelay: रुग्णवाहिका A7 आकुर्डी रेल्वे स्थानकाकडे निघाली आहे. अंदाजे वेळ ~7 मिनिटे. PCCOE जनरल रुग्णालयात बेड राखीव."),
+        ])
+    seeded.append("SAMPLE-05")
+
+    # -- 6. Hospital outage → recovery (3h ago) ------------------------------
+    t0 = now - timedelta(hours=3, minutes=2)
+    v6 = _schecks("SAMPLE-06", amb_id="A2", amb_cap="ALS",
+                  hosp_name="Hadapsar Metro Hospital",
+                  severity=4, pathway="stroke-unit")
+    _insert_sample(
+        db, incident_id="SAMPLE-06", created_at=t0,
+        incident_type="stroke",
+        address="Koregaon Park, Pune",
+        lat=18.5362, lon=73.8936, patient_count=1,
+        symptoms=["slurred speech", "facial droop", "arm weakness"],
+        breathing="normal", bleeding="none",
+        severity=4, pathway="stroke-unit", triage_conf=0.95,
+        triage_rationale="stroke → HIGH / stroke-unit per deterministic lookup.",
+        dispatch_conf=0.92, dispatch_decision={"eta_min": 10.4},
+        hospital_conf=0.90, hospital_decision={"beds_free_after": 70},
+        sel_amb=("A2", "ALS", 10.4), sel_hosp=("h4", "Hadapsar Metro Hospital", 6.1),
+        verification=v6, overall_conf=0.90,
+        current_status="hospital_ready", escalation_status="none",
+        review=None,
+        timeline=[
+            (0, "incident_created", "Stroke report received."),
+            (4, "intake_completed", "Report parsed: stroke, 1 patient, FAST symptoms."),
+            (9, "triage_completed", "HIGH (4) · stroke-unit."),
+            (14, "dispatch_completed", "Ambulance A2 (ALS) dispatched, ETA 10.4 min."),
+            (16, "hospital_selected", "Stroke-unit bed reserved at Baner Lifeline Hospital."),
+            (21, "verification_passed", "All 8 verification checks passed."),
+            (26, "notifications_sent", "Family notified in EN/HI/MR; ER pre-alert sent."),
+            (300, "failure_detected", "Baner Lifeline Hospital reported a power outage; stroke unit dark."),
+            (306, "hospital_failure", "h2 marked unavailable after verification of the outage."),
+            (312, "replanning", "Orchestrator replanning: failed hospital excluded from search."),
+            (320, "hospital_selected", "Replacement: stroke-unit bed reserved at Hadapsar Metro Hospital."),
+            (326, "verification_passed", "Replacement hospital verified against all 8 checks."),
+            (330, "resource_replaced", "h2 → h4; family notified of the new destination in EN/HI/MR."),
+            (338, "hospital_ready", "Stroke team at Hadapsar Metro is standing by."),
+        ],
+        audit=[
+            (4, "IntakeAgent", "Free-text report parsed", "stroke, FAST symptoms", 0.98),
+            (9, "TriageAgent", "Triage decision", "HIGH / stroke-unit", 0.95),
+            (14, "DispatchAgent", "Ambulance dispatched", "A2 (ALS), ETA 10.4 min", 0.92),
+            (16, "HospitalLiaisonAgent", "Hospital bed reserved", "Baner Lifeline Hospital", 0.90),
+            (21, "VerificationAgent", "Verification passed", "8/8 checks", 0.99),
+            (26, "CommunicationAgent", "Notifications sent", "EN/HI/MR family + ER pre-alert", 0.97),
+            (300, "RecoveryManager", "Failure detected", "h2 power outage, stroke unit dark", 1.0),
+            (306, "RecoveryManager", "Hospital failure", "h2 verified unavailable", 1.0),
+            (312, "Orchestrator", "Replanning after failure", "excluding failed hospital h2", 0.9),
+            (320, "HospitalLiaisonAgent", "Hospital bed reserved", "replacement h4 Hadapsar Metro", 0.90),
+            (326, "VerificationAgent", "Verification passed", "replacement verified, 8/8", 0.99),
+            (330, "RecoveryManager", "Family notified of replacement", "new destination EN/HI/MR", 0.97),
+            (338, "Orchestrator", "Incident status: hospital_ready", "stroke team standing by", 1.0),
+        ],
+        comms=[
+            (26, "family", "en",
+             "MedRelay: Ambulance A2 (ALS) is on the way to Koregaon Park. ETA ~10 min. Stroke-unit bed reserved at Baner Lifeline Hospital."),
+            (26, "family", "hi",
+             "MedRelay: एम्बुलेंस A2 (ALS) कोरेगांव पार्क के लिए रवाना हो गई है। ETA ~10 मिनट। बानेर लाइफ़लाइन में स्ट्रोक-यूनिट बेड आरक्षित।"),
+            (26, "family", "mr",
+             "MedRelay: रुग्णवाहिका A2 (ALS) कोरेगाव पार्ककडे निघाली आहे. अंदाजे वेळ ~10 मिनिटे. बानेर लाइफलाइनमध्ये स्ट्रोक-युनिट बेड राखीव."),
+            (330, "family", "en",
+             "MedRelay update: Baner Lifeline had a power outage, so the patient is now headed to Hadapsar Metro Hospital (stroke unit). No delay to care."),
+            (330, "family", "hi",
+             "MedRelay अपडेट: बानेर लाइफ़लाइन में बिजली गुल होने से मरीज़ अब हडपसर मेट्रो अस्पताल (स्ट्रोक यूनिट) ले जाया जा रहा है।"),
+            (330, "family", "mr",
+             "MedRelay अपडेट: बानेर लाइफलाइनमध्ये वीज गेल्याने रुग्ण आता हडपसर मेट्रो रुग्णालय (स्ट्रोक युनिट) येथे नेला जात आहे."),
+        ])
+    seeded.append("SAMPLE-06")
+
+    return {"status": "seeded", "incidents": seeded, "is_sample": True}

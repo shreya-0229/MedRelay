@@ -14,7 +14,9 @@ import {
   statusLabel,
 } from "./badges";
 import AlertBanner from "./AlertBanner";
+import CommsViewer from "./CommsViewer";
 import EmptyState from "./EmptyState";
+import ReplayViewer from "./ReplayViewer";
 import { Skeleton, SkeletonRows } from "./Skeleton";
 
 interface Props {
@@ -51,28 +53,28 @@ function stateStyles(state: AgentRunState): {
     case "done":
       return {
         ring: "border-emerald-500/50",
-        num: "bg-emerald-500/20 text-emerald-300",
+        num: "bg-emerald-500/20 text-emerald-700",
         label: "COMPLETED",
-        labelClass: "text-emerald-400",
+        labelClass: "text-emerald-600",
       };
     case "failed":
       return {
         ring: "border-red-500/60",
-        num: "bg-red-500/20 text-red-300",
+        num: "bg-red-500/20 text-red-700",
         label: "FAILED",
-        labelClass: "text-red-400",
+        labelClass: "text-red-600",
       };
     case "running":
       return {
         ring: "border-sky-500/60",
-        num: "bg-sky-500/20 text-sky-300 relay-pulse",
+        num: "bg-sky-500/20 text-sky-700 relay-pulse",
         label: "RUNNING",
-        labelClass: "text-sky-300",
+        labelClass: "text-sky-700",
       };
     default:
       return {
         ring: "border-relay-border",
-        num: "bg-slate-500/20 text-slate-400",
+        num: "bg-slate-500/20 text-slate-600",
         label: "IDLE",
         labelClass: "text-slate-500",
       };
@@ -81,7 +83,7 @@ function stateStyles(state: AgentRunState): {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
       {children}
     </h3>
   );
@@ -91,6 +93,19 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function timelineEvents(incident: IncidentState, event: string) {
   return (incident.timeline ?? []).filter((t) => t.event === event);
 }
+
+/** Plain-language meaning of each verification check (the pass/fail and
+ * detail still come from the real VerificationAgent output above). */
+const CHECK_EXPLAINERS: Record<string, string> = {
+  required_fields_present: "Nothing essential is missing before judging the plan.",
+  triage_valid: "Severity and care pathway are well-formed.",
+  triage_consistency_ok: "Resources match the triage severity and pathway.",
+  confidence_thresholds_ok: "No agent is guessing below the safety floor.",
+  ambulance_capability_ok: "The ambulance can handle this case (ALS rule).",
+  ambulance_assignment_ok: "The DB really shows this unit en route to this incident.",
+  hospital_bed_ok: "The hospital covers the pathway and holds the bed.",
+  resource_consistency_ok: "Agent claims agree with the actual selections.",
+};
 
 export default function IncidentDetail({
   incidentId,
@@ -238,9 +253,14 @@ export default function IncidentDetail({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-100">
+              <h2 className="text-lg font-bold text-slate-900">
                 {typeLabel(incident.incident_type)}
               </h2>
+              {incident.is_sample && (
+                <span className="inline-flex items-center rounded border border-violet-500/60 bg-violet-500/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wide text-violet-700">
+                  SAMPLE
+                </span>
+              )}
               <span className={severityBadgeClass(incident.severity)}>
                 {severityName(incident.severity)}
               </span>
@@ -258,7 +278,7 @@ export default function IncidentDetail({
               type="button"
               onClick={handleResolve}
               disabled={resolving}
-              className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+              className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
             >
               {resolving ? "Resolving…" : "Resolve incident"}
             </button>
@@ -320,7 +340,7 @@ export default function IncidentDetail({
 
         {/* Failure drills (demo controls — hit the real recovery API) */}
         {canDrill && (
-          <div className="rounded-md border border-dashed border-slate-600 bg-relay-panel2 px-4 py-3">
+          <div className="rounded-md border border-dashed border-slate-700 bg-relay-panel2 px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Failure drills
             </div>
@@ -333,7 +353,7 @@ export default function IncidentDetail({
                     onClick={() =>
                       handleDrill("ambulance", incident.selected_ambulance!.id)
                     }
-                    className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                    className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-500/20 disabled:opacity-50"
                   >
                     {drilling === "ambulance"
                       ? "Injecting…"
@@ -348,7 +368,7 @@ export default function IncidentDetail({
                     onClick={() =>
                       handleDrill("hospital", incident.selected_hospital!.id)
                     }
-                    className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                    className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-500/20 disabled:opacity-50"
                   >
                     {drilling === "hospital"
                       ? "Injecting…"
@@ -356,7 +376,7 @@ export default function IncidentDetail({
                   </button>
                 )}
             </div>
-            <p className="mt-1.5 text-[11px] text-slate-600">
+            <p className="mt-1.5 text-[11px] text-slate-700">
               Drills run the real recovery pipeline: failure validation,
               replanning, re-dispatch, re-verification, family notification.
             </p>
@@ -382,7 +402,7 @@ export default function IncidentDetail({
                       >
                         {i + 1}
                       </span>
-                      <span className="truncate text-xs font-semibold text-slate-200">
+                      <span className="truncate text-xs font-semibold text-slate-800">
                         {a.label}
                       </span>
                     </div>
@@ -411,7 +431,7 @@ export default function IncidentDetail({
                           confidence {pct(out.confidence)}
                         </div>
                         {out.rationale && (
-                          <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-400">
+                          <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-600">
                             {out.rationale}
                           </p>
                         )}
@@ -419,7 +439,7 @@ export default function IncidentDetail({
                     )}
                   </div>
                   {i < PIPELINE_AGENTS.length - 1 && (
-                    <div className="flex items-center px-1 text-slate-600">
+                    <div className="flex items-center px-1 text-slate-700">
                       <span aria-hidden>→</span>
                     </div>
                   )}
@@ -445,10 +465,10 @@ export default function IncidentDetail({
               <span
                 className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold border ${
                   !verification
-                    ? "border-relay-border text-slate-400"
+                    ? "border-relay-border text-slate-600"
                     : verification.passed
-                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400"
-                      : "border-red-500/50 bg-red-500/15 text-red-400"
+                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600"
+                      : "border-red-500/50 bg-red-500/15 text-red-600"
                 }`}
               >
                 {!verification
@@ -469,18 +489,24 @@ export default function IncidentDetail({
                       <span
                         className={
                           c.passed
-                            ? "font-bold text-emerald-400"
-                            : "font-bold text-red-400"
+                            ? "font-bold text-emerald-600"
+                            : "font-bold text-red-600"
                         }
                       >
                         {c.passed ? "✓" : "✗"}
                       </span>
                       <span>
-                        <span className="font-medium text-slate-200">
+                        <span className="font-medium text-slate-800">
                           {c.name}
                         </span>
+                        <span className="text-slate-500">
+                          {" "}
+                          — {CHECK_EXPLAINERS[c.name] ?? "Independent consistency check."}
+                        </span>
                         {c.detail && (
-                          <span className="text-slate-500"> — {c.detail}</span>
+                          <span className="block font-mono text-[10px] text-slate-700">
+                            {c.detail}
+                          </span>
                         )}
                       </span>
                     </li>
@@ -489,7 +515,7 @@ export default function IncidentDetail({
                 {verification.issues.length > 0 && (
                   <ul className="mt-2 space-y-1 border-t border-red-500/30 pt-2">
                     {verification.issues.map((issue, i) => (
-                      <li key={i} className="text-xs text-red-300">
+                      <li key={i} className="text-xs text-red-700">
                         • {issue}
                       </li>
                     ))}
@@ -510,10 +536,10 @@ export default function IncidentDetail({
               </div>
               {incident.selected_ambulance ? (
                 <>
-                  <div className="mt-1 font-mono text-sm font-semibold text-slate-100">
+                  <div className="mt-1 font-mono text-sm font-semibold text-slate-900">
                     {incident.selected_ambulance.id}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-slate-600">
                     {incident.selected_ambulance.capability} · ETA{" "}
                     {incident.selected_ambulance.eta_min} min
                   </div>
@@ -541,10 +567,10 @@ export default function IncidentDetail({
               </div>
               {incident.selected_hospital ? (
                 <>
-                  <div className="mt-1 text-sm font-semibold text-slate-100">
+                  <div className="mt-1 text-sm font-semibold text-slate-900">
                     {incident.selected_hospital.name}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-slate-600">
                     {incident.selected_hospital.distance_km.toFixed(1)} km away
                   </div>
                 </>
@@ -566,8 +592,8 @@ export default function IncidentDetail({
               </div>
             </div>
           </div>
-          <div className="mt-3 rounded-md border border-relay-border bg-relay-panel2 p-3 text-xs text-slate-400">
-            <div className="font-medium text-slate-300">
+          <div className="mt-3 rounded-md border border-relay-border bg-relay-panel2 p-3 text-xs text-slate-600">
+            <div className="font-medium text-slate-700">
               {incident.location.address}
             </div>
             <div className="mt-1 font-mono text-[11px] text-slate-500">
@@ -583,7 +609,7 @@ export default function IncidentDetail({
             )}
             {incident.triage_result && (
               <div className="mt-2 border-t border-relay-border pt-2">
-                <span className="font-medium text-slate-300">Triage: </span>
+                <span className="font-medium text-slate-700">Triage: </span>
                 {severityName(incident.triage_result.severity)} ·{" "}
                 {incident.triage_result.pathway} · confidence{" "}
                 {pct(incident.triage_result.confidence)}
@@ -595,33 +621,15 @@ export default function IncidentDetail({
           </div>
         </div>
 
-        {/* Communications */}
+        {/* Communications — the durable multilingual record */}
         <div>
           <SectionTitle>Family communications</SectionTitle>
-          {incident.communications.length === 0 ? (
-            <p className="mt-2 text-xs text-slate-500">No messages sent yet.</p>
-          ) : (
-            <ul className="mt-2 space-y-2">
-              {incident.communications.map((m, i) => (
-                <li
-                  key={i}
-                  className="rounded-md border border-relay-border bg-relay-panel2 p-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 text-[11px] font-medium text-sky-300">
-                      {m.channel}
-                    </span>
-                    <span className="ml-auto font-mono text-[10px] text-slate-500">
-                      {formatClock(m.ts)}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-sm leading-snug text-slate-200">
-                    {m.text}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <p className="mt-1 text-[11px] text-slate-500">
+            From the persisted message log — English, Hindi, Marathi.
+          </p>
+          <div className="mt-2">
+            <CommsViewer incidentId={incident.incident_id} />
+          </div>
         </div>
 
         {/* Timeline */}
@@ -664,10 +672,10 @@ export default function IncidentDetail({
                       <span
                         className={`text-xs font-semibold ${
                           isFailure
-                            ? "text-red-300"
+                            ? "text-red-700"
                             : isRecovery
-                              ? "text-emerald-300"
-                              : "text-slate-200"
+                              ? "text-emerald-700"
+                              : "text-slate-800"
                         }`}
                       >
                         {humanizeEvent(t.event)}
@@ -693,7 +701,7 @@ export default function IncidentDetail({
             onClick={toggleAudit}
             className="flex w-full items-center justify-between rounded-md border border-relay-border bg-relay-panel2 px-3 py-2 text-left transition-colors hover:border-slate-500"
           >
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-700">
               Audit trail
             </span>
             <span className="text-xs text-slate-500">
@@ -713,11 +721,11 @@ export default function IncidentDetail({
                       key={ev.id}
                       className="border-b border-relay-border/50 pb-2 font-mono text-[11px] last:border-0"
                     >
-                      <div className="flex flex-wrap gap-x-2 text-slate-400">
+                      <div className="flex flex-wrap gap-x-2 text-slate-600">
                         <span className="text-slate-500">
                           {formatClock(ev.ts)}
                         </span>
-                        <span className="font-semibold text-slate-300">
+                        <span className="font-semibold text-slate-700">
                           {ev.agent}
                         </span>
                         <span>{ev.action}</span>
@@ -736,6 +744,14 @@ export default function IncidentDetail({
               )}
             </div>
           )}
+        </div>
+
+        {/* Incident replay — walk the audit trail step by step */}
+        <div>
+          <SectionTitle>Incident replay</SectionTitle>
+          <div className="mt-2">
+            <ReplayViewer incidentId={incident.incident_id} />
+          </div>
         </div>
       </div>
     </section>

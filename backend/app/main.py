@@ -51,6 +51,13 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     models.Base.metadata.create_all(models.engine)
+    # Additive migration: existing DBs created before the is_sample column
+    # need the column added by hand (create_all never alters tables).
+    with models.engine.begin() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(incidents)")]
+        if "is_sample" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE incidents ADD COLUMN is_sample BOOLEAN DEFAULT 0")
     db = models.SessionLocal()
     try:
         seed_fleet(db)
