@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import type { AuditEvent, IncidentState, TimelineEntry } from "../types";
+import type { AuditEvent, IncidentState } from "../types";
 import { PIPELINE_AGENTS, severityName, typeLabel } from "../types";
 import {
   escalationBadge,
@@ -30,6 +30,7 @@ function runState(incident: IncidentState, key: string): AgentRunState {
   if (out) return out.success ? "done" : "failed";
   return isTerminalStatus(incident.current_status) ? "pending" : "running";
 }
+function escalationReason(incident: IncidentState): string {
   const entries = incident.timeline ?? [];
   for (let i = entries.length - 1; i >= 0; i -= 1) {
     const t = entries[i];
@@ -51,28 +52,28 @@ function stateStyles(state: AgentRunState): {
       return {
         ring: "border-emerald-500/50",
         num: "bg-emerald-500/20 text-emerald-300",
-        label: "Done",
+        label: "COMPLETED",
         labelClass: "text-emerald-400",
       };
     case "failed":
       return {
         ring: "border-red-500/60",
         num: "bg-red-500/20 text-red-300",
-        label: "Failed",
+        label: "FAILED",
         labelClass: "text-red-400",
       };
     case "running":
       return {
         ring: "border-sky-500/60",
         num: "bg-sky-500/20 text-sky-300 relay-pulse",
-        label: "Running",
+        label: "RUNNING",
         labelClass: "text-sky-300",
       };
     default:
       return {
         ring: "border-relay-border",
         num: "bg-slate-500/20 text-slate-400",
-        label: "Pending",
+        label: "IDLE",
         labelClass: "text-slate-500",
       };
   }
@@ -104,6 +105,16 @@ export default function IncidentDetail({
   const [auditLoading, setAuditLoading] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [drilling, setDrilling] = useState<string | null>(null);
+  const timelineEndRef = useRef<HTMLLIElement | null>(null);
+  const timelineCount = incident?.timeline?.length ?? 0;
+
+  /* Auto-scroll the timeline to the newest entry when it grows. */
+  useEffect(() => {
+    timelineEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [timelineCount]);
 
   useEffect(() => {
     setIncident(null);
@@ -179,20 +190,26 @@ export default function IncidentDetail({
 
   if (!incidentId) {
     return (
-      <section className="flex items-center justify-center rounded-lg border border-relay-border bg-relay-panel p-8">
-        <p className="text-center text-sm text-slate-500">
-          Select an incident to inspect the agent pipeline.
-        </p>
+      <section className="flex min-h-[280px] items-center justify-center rounded-lg border border-relay-border bg-relay-panel">
+        <EmptyState
+          title="No incident selected"
+          hint="Pick an incident from the overview to inspect its agent pipeline, verification, timeline, and audit trail."
+        />
       </section>
     );
   }
 
   if (loading || !incident) {
     return (
-      <section className="rounded-lg border border-relay-border bg-relay-panel p-8">
-        <p className="text-sm text-slate-400">
-          {error ?? "Loading incident…"}
-        </p>
+      <section className="rounded-lg border border-relay-border bg-relay-panel p-4">
+        {error ? (
+          <AlertBanner variant="critical" title="Failed to load incident" detail={error} />
+        ) : (
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-2/3" />
+            <SkeletonRows rows={5} />
+          </div>
+        )}
       </section>
     );
   }
@@ -225,7 +242,7 @@ export default function IncidentDetail({
                 {typeLabel(incident.incident_type)}
               </h2>
               <span className={severityBadgeClass(incident.severity)}>
-                {severityLabel(incident.severity)}
+                {severityName(incident.severity)}
               </span>
               <span className={statusBadgeClass(incident.current_status)}>
                 {statusLabel(incident.current_status)}
@@ -249,88 +266,56 @@ export default function IncidentDetail({
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            {error}
-          </div>
+          <AlertBanner
+            variant="critical"
+            title="Action failed"
+            detail={error}
+          />
         )}
 
         {/* Escalation banner */}
         {escalated && (
-          <div className="rounded-md border border-red-500/60 bg-red-500/15 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="relay-pulse inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-              <span className="text-sm font-bold tracking-wide text-red-300">
-                ESCALATED — human dispatcher notified
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-red-200/80">
-              {escalationReason(incident)}
-            </p>
-          </div>
+          <AlertBanner
+            variant="critical"
+            title="Escalated — human dispatcher notified"
+            detail={escalationReason(incident)}
+          />
         )}
         {replanning && (
-          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 px-4 py-3">
-            <span className="text-sm font-bold tracking-wide text-amber-300">
-              REPLANNING IN PROGRESS
-            </span>
-            <p className="mt-1 text-sm text-amber-200/80">
-              The agents are revising the dispatch plan after a failed
-              assignment.
-            </p>
-          </div>
+          <AlertBanner
+            variant="warning"
+            title="Replanning in progress"
+            detail="The agents are revising the dispatch plan after a failed assignment."
+          />
         )}
 
         {/* Recovery events — rendered strictly from the backend timeline */}
         {timelineEvents(incident, "failure_detected").map((t, i) => (
-          <div
+          <AlertBanner
             key={`fail-${i}`}
-            className="rounded-md border border-red-500/60 bg-red-500/15 px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="relay-pulse inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-              <span className="text-sm font-bold tracking-wide text-red-300">
-                FAILURE DETECTED
-              </span>
-              <span className="ml-auto font-mono text-[10px] text-red-200/60">
-                {formatClock(t.ts)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-red-200/80">{t.detail}</p>
-          </div>
+            variant="critical"
+            title="Failure detected"
+            detail={t.detail}
+            ts={t.ts}
+          />
         ))}
         {timelineEvents(incident, "conflict_detected").map((t, i) => (
-          <div
+          <AlertBanner
             key={`conf-${i}`}
-            className="rounded-md border border-red-500/60 bg-red-500/15 px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="relay-pulse inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-              <span className="text-sm font-bold tracking-wide text-red-300">
-                AGENT CONFLICT DETECTED
-              </span>
-              <span className="ml-auto font-mono text-[10px] text-red-200/60">
-                {formatClock(t.ts)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-red-200/80">{t.detail}</p>
-          </div>
+            variant="critical"
+            title="Agent conflict detected"
+            detail={t.detail}
+            ts={t.ts}
+          />
         ))}
         {timelineEvents(incident, "resource_replaced").map((t, i) => (
-          <div
+          <AlertBanner
             key={`repl-${i}`}
-            className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              <span className="text-sm font-bold tracking-wide text-emerald-300">
-                NEW RESOURCE SELECTED
-              </span>
-              <span className="ml-auto font-mono text-[10px] text-emerald-200/60">
-                {formatClock(t.ts)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-emerald-200/80">{t.detail}</p>
-          </div>
+            variant="success"
+            title="New resource selected"
+            detail={t.detail}
+            ts={t.ts}
+          />
         ))}
 
         {/* Failure drills (demo controls — hit the real recovery API) */}
@@ -599,7 +584,7 @@ export default function IncidentDetail({
             {incident.triage_result && (
               <div className="mt-2 border-t border-relay-border pt-2">
                 <span className="font-medium text-slate-300">Triage: </span>
-                severity S{incident.triage_result.severity} ·{" "}
+                {severityName(incident.triage_result.severity)} ·{" "}
                 {incident.triage_result.pathway} · confidence{" "}
                 {pct(incident.triage_result.confidence)}
                 <p className="mt-0.5 text-slate-500">
@@ -643,29 +628,61 @@ export default function IncidentDetail({
         <div>
           <SectionTitle>Timeline</SectionTitle>
           <ol className="mt-2 space-y-2">
-            {(incident.timeline ?? []).map((t, i) => (
-              <li key={i} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-slate-500" />
-                  {i < incident.timeline.length - 1 && (
-                    <span className="w-px flex-1 bg-relay-border" />
-                  )}
-                </div>
-                <div className="pb-1">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-xs font-medium text-slate-200">
-                      {humanizeEvent(t.event)}
-                    </span>
-                    <span className="font-mono text-[10px] text-slate-500">
-                      {formatClock(t.ts)}
-                    </span>
+            {(incident.timeline ?? []).map((t, i) => {
+              const isFailure = /fail|conflict|escalat/i.test(t.event ?? "");
+              const isRecovery =
+                /replan|replac|recover|resolv/i.test(t.event ?? "") &&
+                !isFailure;
+              return (
+                <li
+                  key={i}
+                  ref={i === (incident.timeline?.length ?? 0) - 1 ? timelineEndRef : undefined}
+                  className={`flex gap-3 rounded-md px-2 py-1 ${
+                    isFailure
+                      ? "border-l-2 border-red-500 bg-red-500/5"
+                      : isRecovery
+                        ? "border-l-2 border-emerald-500 bg-emerald-500/5"
+                        : "border-l-2 border-transparent"
+                  }`}
+                >
+                  <div className="flex flex-col items-center">
+                    <span
+                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                        isFailure
+                          ? "bg-red-400"
+                          : isRecovery
+                            ? "bg-emerald-400"
+                            : "bg-slate-500"
+                      }`}
+                    />
+                    {i < incident.timeline.length - 1 && (
+                      <span className="w-px flex-1 bg-relay-border" />
+                    )}
                   </div>
-                  {t.detail && (
-                    <p className="text-[11px] text-slate-500">{t.detail}</p>
-                  )}
-                </div>
-              </li>
-            ))}
+                  <div className="pb-1">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span
+                        className={`text-xs font-semibold ${
+                          isFailure
+                            ? "text-red-300"
+                            : isRecovery
+                              ? "text-emerald-300"
+                              : "text-slate-200"
+                        }`}
+                      >
+                        {humanizeEvent(t.event)}
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-slate-500">
+                        {formatClock(t.ts)}
+                      </span>
+                    </div>
+                    {t.detail && (
+                      <p className="text-[11px] text-slate-500">{t.detail}</p>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         </div>
 

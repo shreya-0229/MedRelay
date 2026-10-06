@@ -289,3 +289,86 @@ Frontend rebuilt as a 10-section emergency command center; backend untouched
 - Honest note: the flagship report text uses "bleeding heavily" (one word
   added to the script) — that is what deterministically drives the triage
   vitals override to CRITICAL; documented in `demo.py`.
+
+## Update — 2026-10-06 (dashboard visual polish pass)
+
+Frontend-only pass — no backend changes, no functionality removed, every
+status/timestamp/event still from the real API/WebSocket.
+
+- **Pipeline Story strip** (new `PipelineStrip.tsx`, hero of the command
+  view): REPORT → INTAKE → PARALLEL AGENTS → VERIFICATION → ACTION →
+  COMMUNICATION → AUDIT, each stage lit from the selected incident's real
+  state (agent outputs, verification results, resource statuses,
+  communications, terminal status). PARALLEL AGENTS fans out into
+  Triage/Dispatch/Hospital sub-states. When the incident timeline contains a
+  failure/conflict, a second **Failure recovery** strip appears:
+  FAILURE → VERIFY → REPLAN → NEW RESOURCE → VERIFY → CONTINUE, keyed to
+  real recovery timeline events. Stage changes replay a one-shot highlight
+  (never an idle loop); the strip scrolls horizontally on small screens.
+- **One badge language**: shared `SectionHeader`, `AlertBanner`
+  (critical/warning/success/info), `Skeleton`, `EmptyState` components;
+  severity labels unified to CRITICAL/HIGH/MODERATE/LOW everywhere;
+  agent run states unified to IDLE/RUNNING/COMPLETED/FAILED/WAITING/
+  HUMAN REVIEW.
+- **Agent activity**: status pills flash once per real status change;
+  FAILED/HUMAN REVIEW get stronger emphasis; honest empty state when idle.
+- **Timeline**: failure events get a red rail, recovery events a green rail,
+  mono tabular timestamps, auto-scroll to the newest entry.
+- **States**: skeleton shimmer while panels load; backend-unreachable banner
+  with Retry in App; live-feed disconnect banner (auto-reconnect note +
+  polling-fallback indicator); DemoView scenario load error with Retry;
+  map empty state; `prefers-reduced-motion` disables all animation.
+- Verified: `tsc + vite` clean; served UI exercised live (create →
+  full pipeline contract; failure drill → recovered with all recovery
+  events; vague report → human_review_required with review dossier);
+  backend suites 48+34+62+67 = 211/211 pass; responsive rules confirmed in
+  the built CSS (sm/md/xl breakpoints, strip horizontal scroll < 760px).
+
+## Update — 2026-10-06 (engineering audit, stage 2: fixes)
+
+A read-only audit (stage 1) inspected every endpoint with valid + invalid
+payloads, all six agents, the orchestrator, safety rails, frontend data flow,
+and git history for secrets. Findings fixed in this stage:
+
+- **[CRITICAL] Flagship demo lied on failure.** `_s_main_judging` stamped
+  `hospital_ready` + emitted `HOSPITAL_READY` + returned run `"done"`
+  unconditionally — even when the recovery had escalated with no ambulance.
+  Fix (`backend/app/demo.py`): step 20 extracted into `_stamp_hospital_ready`
+  behind the `_recovery_succeeded` gate (requires `escalation_status=="none"`
+  AND a selected ambulance); otherwise the run is marked `"failed"` with an
+  honest error and the incident stays escalated. Regression tests:
+  `test_flagship_fail_fast_on_exhausted_fleet`,
+  `test_flagship_gate_rejects_failed_recovery`.
+- **[MAJOR] Fleet exhaustion across flagship runs.** Each run retires 1 ALS
+  and holds 1 ALS; without Reset Demo, dispatch eventually fails. Fix: the
+  flagship now fails fast at start when fewer than 2 ALS units are available
+  ("ALS fleet exhausted — press Reset Demo and re-run") instead of dying
+  mid-demo.
+- **[MINOR] LLM could bypass the human-review floor.** `_llm_assess` returned
+  model-supplied confidence unchecked. Fix (`triage_agent.py`): capped at
+  0.59, so LLM-assessed unknown types always route to human review.
+  Documented in `docs/AGENTS.md`; test added in `test_agents.py`.
+- **[MINOR] `resolve_incident`** now also clears `escalation_status` → `"none"`
+  (row + state), so a resolved incident can't read `completed` + `escalated`.
+- **[MINOR] Incident-ID race** (`state_manager.py`): concurrent POSTs could
+  collide on the `count()+1` id → 500. Fix: on `IntegrityError`, retry once
+  with a random 4-char suffix; readable format kept for the normal path.
+- **[MINOR] `.gitignore`** now ignores `.env` / `.env.*` (secret-commit risk).
+- **[MINOR] README**: judge script corrected (8/8 verification checks,
+  EN/HI/MR comms) and a new **Limitations** section added (simulated city,
+  straight-line ETAs, no real SMS, integer beds, single city, no auth —
+  local demo only, LLM never on safety rails).
+- **Docs refreshed**: `docs/TODO.md` (map/tests/i18n items marked done),
+  `docs/HANDOFF.md` (reset semantics, knob location, ID race),
+  `docs/AGENTS.md` (LLM confidence cap).
+
+**Clean bills:** no secrets in git history; Gemini key env-only; no
+`eval`/`exec`/`subprocess`; no raw SQL (ORM only); same-origin serving (no
+CORS needed); validation rejects all bad-payload probes with clean 4xx;
+frontend has zero hardcoded data; no auth on any endpoint (documented —
+local demo only).
+
+**Tests: 226/226 pass** (52 agents + 34 orchestrator + 62 recovery + 78 demo,
+incl. 3 new regression tests). Live-verified: flagship → `hospital_ready`
+(happy path); fleet exhausted → run `failed` with the Reset Demo message and
+no fake handoff.

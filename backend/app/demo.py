@@ -472,6 +472,24 @@ async def _s_external_service_failure(run: _Run, ctx: _DemoCtx) -> str:
 async def _s_main_judging(run: _Run, ctx: _DemoCtx) -> str:
     """The 20-step flagship: critical accident → breakdown → recovery →
     HOSPITAL READY."""
+    # Fail fast: the flagship needs one ALS for the initial dispatch and a
+    # second ALS as the replacement after the simulated breakdown. Running
+    # with a depleted fleet would escalate mid-demo and (before the honest
+    # gate below existed) could misreport the outcome.
+    db0: Session = ctx.session_factory()
+    try:
+        als_available = (db0.query(models.Ambulance)
+                         .filter(models.Ambulance.capability == "ALS",
+                                 models.Ambulance.status == "available")
+                         .count())
+    finally:
+        db0.close()
+    if als_available < 2:
+        run.status = "failed"
+        run.error = (f"ALS fleet exhausted ({als_available} available, 2 "
+                     "required) — press Reset Demo and re-run")
+        run.terminal_state = None
+        return ""
     # Steps 1-9: the full real pipeline.
     state = await _pipeline(run, ctx, _road_accident_report())
     _check(run)
@@ -486,6 +504,29 @@ async def _s_main_judging(run: _Run, ctx: _DemoCtx) -> str:
     finally:
         db.close()
     _check(run)
+    return await _stamp_hospital_ready(run, ctx, out)
+
+
+def _recovery_succeeded(out: IncidentState) -> bool:
+    """Honest-gate predicate for the flagship handoff: HOSPITAL READY may
+    only be stamped when the recovery genuinely succeeded — the incident is
+    not escalated and a replacement ambulance is actually assigned."""
+    return (out.escalation_status == "none"
+            and out.selected_ambulance is not None)
+
+
+async def _stamp_hospital_ready(run: _Run, ctx: _DemoCtx,
+                               out: IncidentState) -> str:
+    """Step 20 of the flagship. Stamps HOSPITAL READY only if the recovery
+    genuinely succeeded; otherwise marks the run failed with an honest
+    error and leaves the incident in its (escalated) state."""
+    if not _recovery_succeeded(out):
+        run.status = "failed"
+        run.error = (f"Flagship did not reach HOSPITAL READY: incident "
+                     f"{out.incident_id} ended '{out.current_status}' "
+                     f"(escalation={out.escalation_status}) — no safe handoff")
+        run.terminal_state = out.current_status
+        return out.current_status
     # Step 20: handoff — the receiving hospital team is standing by.
     db = ctx.session_factory()
     try:

@@ -224,14 +224,23 @@ export default function DemoView({
     {},
   );
   const [resetting, setResetting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const runsRef = useRef(runs);
   runsRef.current = runs;
 
-  useEffect(() => {
+  const loadScenarios = () => {
+    setLoadError(null);
     api
       .listDemoScenarios()
       .then((r) => setScenarios(r.scenarios ?? []))
-      .catch(() => {});
+      .catch((e: unknown) =>
+        setLoadError(e instanceof Error ? e.message : "Load failed"),
+      );
+  };
+
+  useEffect(() => {
+    loadScenarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Accumulate every current_status ever seen per incident (sticky). */
@@ -378,8 +387,27 @@ export default function DemoView({
         ))}
       </div>
 
-      {scenarios.length === 0 && (
-        <p className="text-sm text-slate-500">Loading scenarios…</p>
+      {scenarios.length === 0 && !loadError && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton h-44 rounded-lg" />
+          ))}
+        </div>
+      )}
+      {loadError && (
+        <div className="rounded-lg border border-red-500/60 bg-red-500/10 px-4 py-3" role="alert">
+          <p className="text-sm text-red-200">
+            <span className="font-bold">Could not load demo scenarios.</span>{" "}
+            {loadError}
+          </p>
+          <button
+            type="button"
+            onClick={loadScenarios}
+            className="mt-2 rounded-md border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/20"
+          >
+            Retry
+          </button>
+        </div>
       )}
     </div>
   );

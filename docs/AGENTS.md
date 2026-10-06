@@ -79,8 +79,9 @@ keeps every pipeline run auditable and replayable.
   `SEVERITY=<1-5> PATHWAY=<pathway> CONFIDENCE=<0-1>`; the pathway is validated
   against the known set and on any parse failure the deterministic fallback
   (severity 3 / `general-er` at 0.55) stands.
-- **Confidence:** 0.95 for known types, 0.55 for unknown (LLM-assessed values
-  pass through only if a real model answered).
+- **Confidence:** 0.95 for known types, 0.55 for unknown types. LLM-assessed
+  values are **capped at 0.59** — an overconfident model can never push an
+  unknown type above the 0.6 human-review floor (safety fix, 2026-10-06).
 - **Safety rules:** the lookup table is deterministic and auditable; LLM output
   is quarantined to unknown types and never overrides the vitals safety
   ladder. When confidence < 0.6 the envelope sets `requires_human=True` — a
